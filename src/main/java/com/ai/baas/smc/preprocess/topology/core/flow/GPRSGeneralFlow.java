@@ -1,13 +1,13 @@
-package com.ai.baas.bmc.topology.core.flow;
+package com.ai.baas.smc.preprocess.topology.core.flow;
 
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ai.baas.bmc.topology.core.bolt.DuplicateCheckingBolt;
-import com.ai.baas.bmc.topology.core.bolt.UnpackingBolt;
-import com.ai.baas.bmc.topology.core.util.BmcConstants;
+import com.ai.baas.smc.preprocess.topology.core.bolt.DuplicateCheckingBolt;
+import com.ai.baas.smc.preprocess.topology.core.bolt.UnpackingBolt;
+import com.ai.baas.smc.preprocess.topology.core.util.BmcConstants;
 import com.ai.baas.storm.flow.BaseFlow;
 import com.ai.baas.storm.util.BaseConstants;
 

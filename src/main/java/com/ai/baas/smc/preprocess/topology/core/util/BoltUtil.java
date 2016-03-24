@@ -1,4 +1,4 @@
-package com.ai.baas.bmc.topology.core.util;
+package com.ai.baas.smc.preprocess.topology.core.util;
 
 import java.util.HashMap;
 import java.util.Map;

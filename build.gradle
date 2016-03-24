@@ -25,7 +25,7 @@ dependencies{
     compile 'org.apache.kafka:kafka_2.10:0.8.2.1'
     compile 'org.apache.storm:storm-kafka:0.9.6'
     compile 'org.apache.hbase:hbase-client:1.1.2'
-    //compile 'com.ai.baas.storm:baas-storm:0.1.2-SNAPSHOT'
+    compile 'com.ai.baas.storm:baas-storm:0.1.2-SNAPSHOT'
     compile 'commons-dbutils:commons-dbutils:1.5'
     
     // 不打包依赖
