@@ -37,7 +37,7 @@ public class UnpackingBolt extends BaseBasicBolt {
 	@Override
 	public void prepare(Map stormConf, TopologyContext context) {
 		System.out.println("===============UnpackingBolt.prepare====");
-		JdbcProxy.loadResource(Arrays.asList(BaseConstants.JDBC_DEFAULT), stormConf);
+		//JdbcProxy.loadResource(Arrays.asList(BaseConstants.JDBC_DEFAULT), stormConf);
 		mappingRules[0] = MappingRule.getMappingRule(MappingRule.FORMAT_TYPE_INPUT, BaseConstants.JDBC_DEFAULT);
 		mappingRules[1] = mappingRules[0];
 	}
