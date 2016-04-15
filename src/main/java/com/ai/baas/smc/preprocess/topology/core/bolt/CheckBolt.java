@@ -99,62 +99,55 @@ public class CheckBolt extends BaseBasicBolt {
             ICacheClient failedRecordcacheClient = CacheClientFactory
                     .getCacheClient(NameSpace.FAILED_RECORD);
             List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
-            for (Map<String, String> map : results) {
-                for (Entry<String, String> result : map.entrySet()) {
-                    String objectId = result.getValue();
-                    // 根据对象id获取元素ID
 
-                    String elementStrings = cacheClient.get(tenantId + "." + objectId);// key：租户id.流水对象id获得元素对象想
-                    List list = JSON.parse(elementStrings, List.class);
+            Map<String, String> map = results.get(0);
+            String objectId = map.get("OBJECT_ID");
+            String billTimeSn = map.get("BILL_TIME_SN");
+            // 根据对象id获取元素ID
+            String elementStrings = cacheClient.get(tenantId + "." + objectId);// key：租户id.流水对象id获得元素对象想
+            List list = JSON.parse(elementStrings, List.class);
 
-                    if (list.size() == 0) {
+            if (list.size() == 0) {
+                throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+                        tenantId + "." + objectId + "租户id.流水对象id获得元素对象为空");
+            }
+            for (Object o : list) {
+                StlElementVo stlElementVo = (StlElementVo) o;
+                String element = data.get(stlElementVo.getElementCode());
+                Boolean NecessaryResult = checkIsNecessary(element, stlElementVo);
+                if (!NecessaryResult) {
+                    // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
+                    assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败", "必填元素为空");
+                    increaseRedise(successRecordcacheClient, failedRecordcacheClient, false,
+                            tenantId, batchNo);
+                    throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+                            stlElementVo.getElementCode() + "校验失败，此elementcode为必填");
+
+                } else {
+                    Boolean ValueTypeResult = checkValueType(element, stlElementVo);
+                    if (!ValueTypeResult) {
+                        assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败", "必填元素为空");
+                        increaseRedise(successRecordcacheClient, failedRecordcacheClient, false,
+                                tenantId, batchNo);
                         throw new BusinessException(
-                                ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR, tenantId + "."
-                                        + objectId + "租户id.流水对象id获得元素对象为空");
-                    }
-                    for (Object o : list) {
-                        StlElementVo stlElementVo = (StlElementVo) o;
-                        String element = data.get(stlElementVo.getElementCode());
-                        Boolean NecessaryResult = checkIsNecessary(element, stlElementVo);
-                        if (!NecessaryResult) {
-                            // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
+                                ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+                                stlElementVo.getElementCode() + "校验失败，此elementcode属性值类型错误");
+                    } else {
+                        Boolean IsPKResult = checkIsPK(tenantId, batchNo, objectId, orderId,
+                                applyTime);
+                        if (!IsPKResult) {
                             assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败",
-                                    "必填元素为空");
+                                    "是否主键与设定不符");
                             increaseRedise(successRecordcacheClient, failedRecordcacheClient,
                                     false, tenantId, batchNo);
                             throw new BusinessException(
                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                    stlElementVo.getElementCode() + "校验失败，此elementcode为必填");
-
+                                    stlElementVo.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
                         } else {
-                            Boolean ValueTypeResult = checkValueType(element, stlElementVo);
-                            if (!ValueTypeResult) {
-                                assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败",
-                                        "必填元素为空");
-                                increaseRedise(successRecordcacheClient, failedRecordcacheClient,
-                                        false, tenantId, batchNo);
-                                throw new BusinessException(
-                                        ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                        stlElementVo.getElementCode() + "校验失败，此elementcode属性值类型错误");
-                            } else {
-                                Boolean IsPKResult = checkIsPK(tenantId, batchNo, objectId,
-                                        orderId, applyTime);
-                                if (!IsPKResult) {
-                                    assemResult(tenantId, batchNo, objectId, orderId, applyTime,
-                                            "失败", "是否主键与设定不符");
-                                    increaseRedise(successRecordcacheClient,
-                                            failedRecordcacheClient, false, tenantId, batchNo);
-                                    throw new BusinessException(
-                                            ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                            stlElementVo.getElementCode()
-                                                    + "校验失败，此elementcode是否主键与设定不符");
-                                } else {
-                                    assemResult(tenantId, batchNo, objectId, orderId, applyTime,
-                                            "成功", "校验通过");
-                                    increaseRedise(successRecordcacheClient,
-                                            failedRecordcacheClient, true, tenantId, batchNo);
-                                }
-                            }
+                            assemResult(tenantId, batchNo, objectId, orderId, applyTime, "成功",
+                                    "校验通过");
+                            increaseRedise(successRecordcacheClient, failedRecordcacheClient, true,
+                                    tenantId, batchNo);
                         }
                     }
                 }
@@ -349,7 +342,7 @@ public class CheckBolt extends BaseBasicBolt {
         if (client == null)
             client = new DshmClient();
         Map<String, String> logParam = new TreeMap<String, String>();
-        logParam.put(SmcConstants.TENANT_ID_BATCH_NO, tenantId + "." + batchNo);
+        logParam.put(SmcConstants.BATCH_NO_TENANT_ID, batchNo + ":" + tenantId);
         return client.list("cp_price_info").where(logParam).executeQuery(cacheClient);
     }
 

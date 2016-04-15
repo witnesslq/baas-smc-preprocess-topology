@@ -4,7 +4,7 @@ public final class SmcConstants {
     private SmcConstants() {
     }
 
-    public final static String TENANT_ID_BATCH_NO = "tenantId.batchNo";
+    public final static String BATCH_NO_TENANT_ID = "batch_no:tenant_id";
 
     public final static String CHARSET_UTF8 = "utf-8";
 
@@ -19,6 +19,8 @@ public final class SmcConstants {
     public static final String ORDER_ID = "order_id";
 
     public static final String APPLY_TIME = "apply_time";
+
+    public static final String TOTAL_RECORD = "total_record";
 
     /**
      * 基础元素表<br>
@@ -173,6 +175,11 @@ public final class SmcConstants {
         public static final String FAILED_RECORD = "failed_record";
 
         public static final String STL_OBJ_STAT = "stl_obj_stat";
+
+        public static final String STATS_TIMES = "stats_times";
+
+        public static final String STATS_TIMES_COUNT = "stats_times_count";
+
     }
 
     public static class StlPolicyItemPlan {
