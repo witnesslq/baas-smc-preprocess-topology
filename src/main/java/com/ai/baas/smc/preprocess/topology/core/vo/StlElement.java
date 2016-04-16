@@ -2,7 +2,7 @@ package com.ai.baas.smc.preprocess.topology.core.vo;
 
 import java.sql.Timestamp;
 
-public class StlElementVo {
+public class StlElement {
     private Long elementId;
 
     private String tenantId;

@@ -28,8 +28,8 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement
 import com.ai.baas.smc.preprocess.topology.core.util.IKin;
 import com.ai.baas.smc.preprocess.topology.core.util.SmcSeqUtil;
 import com.ai.baas.smc.preprocess.topology.core.vo.FinishListVo;
+import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElementAttr;
-import com.ai.baas.smc.preprocess.topology.core.vo.StlElementVo;
 import com.ai.baas.storm.exception.BusinessException;
 import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
@@ -77,11 +77,11 @@ public class StatisticsBolt extends BaseBasicBolt {
             logger.info("-------------------line==" + line);
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
-            String orderId = data.get(SmcConstants.ORDER_ID);
             int totalRecord = Integer.parseInt(data.get(SmcConstants.TOTAL_RECORD));
-            String applyTime = data.get(SmcConstants.APPLY_TIME);
             ICacheClient cacheClient = CacheClientFactory
                     .getCacheClient(NameSpace.OBJECT_POLICY_ELEMENT_CACHE);
+            ICacheClient cacheClientElement = CacheClientFactory
+                    .getCacheClient(NameSpace.ELEMENT_CACHE);
             ICacheClient cacheClientCount = CacheClientFactory
                     .getCacheClient(NameSpace.STATS_TIMES_COUNT);
             ICacheClient cacheElementAttr = CacheClientFactory
@@ -103,7 +103,7 @@ public class StatisticsBolt extends BaseBasicBolt {
                     if (list.size() != 0) {
                         for (Object oo : list) {
 
-                            StlElementVo stlElementVo = (StlElementVo) oo;
+                            StlElement stlElementVo = (StlElement) oo;
                             // 租户ID+政策ID+账期+统计元素ID+统计元素值
                             String key = assemKey(SmcSeqUtil.createDataId().toString(), tenantId,
                                     policyId.toString(), billTimeSn, stlElementVo.getElementId()
@@ -139,15 +139,30 @@ public class StatisticsBolt extends BaseBasicBolt {
                                     if (StatisticsType.RECORD_COUNT.equals(stlElementVo
                                             .getStatisticsType())) {
 
-                                        increase(resultValue, 1, cacheClientStlObjStat, key, true);
+                                        increase(resultValue, 1F, cacheClientStlObjStat, key, true);
 
                                     } else if (StatisticsType.VALUE_SUM.equals(stlElementVo
                                             .getStatisticsType())) {
-                                        float num = 0f;
+                                        Long elementIdString = stlElementVo
+                                                .getStatisticsElementId();
+                                        // key:tenantId.elementId,value:StlElement
+                                        String elementVoString = cacheClientElement
+                                                .get(stlElementVo.getTenantId() + "."
+                                                        + elementIdString);
+                                        if (StringUtil.isBlank(elementVoString)) {
+                                            throw new BusinessException(
+                                                    ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+                                                    elementIdString + "此元素id对应的元素为空");
+                                        }
+                                        StlElement stlElement = JSON.parseObject(elementVoString,
+                                                StlElement.class);
+
+                                        Float num = Float.parseFloat(data.get(stlElement
+                                                .getElementCode()));
                                         increase(resultValue, num, cacheClientStlObjStat, key, true);
                                     }
                                 } else {// 如果不满足则结算对象统计数据表的 统计次数加1
-                                    increase(resultValue, 1, cacheClientStlObjStat, key, false);
+                                    increase(resultValue, 1F, cacheClientStlObjStat, key, false);
                                 }
                             }
                         }
@@ -168,21 +183,20 @@ public class StatisticsBolt extends BaseBasicBolt {
             }
             if (num == totalRecord) {// 加入到缓存的完成队列触发计算拓扑 busidata_租户ID _批次号_账期_数据对象_stats_times
 
-                updateFinishRedis(tenantId, objectId, billTimeSn, batchNo, cacheStatsTimes);
+                updateFinishRedis(tenantId, objectId, billTimeSn, batchNo,
+                        Integer.toString(totalRecord), cacheStatsTimes);
 
             } else if (num > totalRecord) {
                 throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                         tenantId + "." + batchNo + "此租户id的这个批次统计错误统计数已经超过此批次总数");
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     private void updateFinishRedis(String tenantId, String objectId, String billTimeSn,
-            String batchNo, ICacheClient cacheStatsTimes) {
+            String batchNo, String totalRecord, ICacheClient cacheStatsTimes) {
 
         String finishKey = "busidata_tenantId_batchNo_billTimeSn_objectId_stats_times";
         String cacheStatsTimesValues = cacheStatsTimes.get(finishKey);
@@ -194,6 +208,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             finishListVo.setBusidata("busidata");
             finishListVo.setObjectId(objectId);
             finishListVo.setTenantId(tenantId);
+            finishListVo.setStats_times(totalRecord);
             finishListVos.add(finishListVo);
             cacheStatsTimes.set(finishKey, JSON.toJSONString(finishListVos));
         } else {
@@ -204,6 +219,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             finishListVoNew.setBusidata("busidata");
             finishListVoNew.setObjectId(objectId);
             finishListVoNew.setTenantId(tenantId);
+            finishListVoNew.setStats_times(totalRecord);
             list.add(finishListVoNew);
             cacheStatsTimes.set(finishKey, JSON.toJSONString(list));
         }
@@ -223,7 +239,7 @@ public class StatisticsBolt extends BaseBasicBolt {
     }
 
     //
-    private void increase(String resultRecord, float num, ICacheClient cacheClientStlObjStat,
+    private void increase(String resultRecord, Float num, ICacheClient cacheClientStlObjStat,
             String key, boolean b) {
         String[] result = resultRecord.split("_");
         String statisticsVal = result[7];

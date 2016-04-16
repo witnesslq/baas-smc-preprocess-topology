@@ -22,6 +22,12 @@ public final class SmcConstants {
 
     public static final String TOTAL_RECORD = "total_record";
 
+    public static final String CHECK_BOLT = "check_bolt";
+
+    public static final String STATISTICS_BOLT = "statistics_bolt";
+
+    public static final String KAFKA_SPOUT_NAME = "kafka-spout";
+
     /**
      * 基础元素表<br>
      * Date: 2016年3月17日 <br>

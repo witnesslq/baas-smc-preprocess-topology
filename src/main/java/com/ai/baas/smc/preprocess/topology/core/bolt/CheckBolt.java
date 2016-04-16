@@ -5,7 +5,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import org.apache.commons.lang.StringUtils;
@@ -30,7 +29,7 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlBillIte
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsNecessary;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
 import com.ai.baas.smc.preprocess.topology.core.util.HbaseClient;
-import com.ai.baas.smc.preprocess.topology.core.vo.StlElementVo;
+import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlSysParam;
 import com.ai.baas.storm.exception.BusinessException;
 import com.ai.baas.storm.message.MappingRule;
@@ -112,26 +111,26 @@ public class CheckBolt extends BaseBasicBolt {
                         tenantId + "." + objectId + "租户id.流水对象id获得元素对象为空");
             }
             for (Object o : list) {
-                StlElementVo stlElementVo = (StlElementVo) o;
-                String element = data.get(stlElementVo.getElementCode());
-                Boolean NecessaryResult = checkIsNecessary(element, stlElementVo);
+                StlElement stlElement = (StlElement) o;
+                String element = data.get(stlElement.getElementCode());
+                Boolean NecessaryResult = checkIsNecessary(element, stlElement);
                 if (!NecessaryResult) {
                     // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
                     assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败", "必填元素为空");
                     increaseRedise(successRecordcacheClient, failedRecordcacheClient, false,
                             tenantId, batchNo);
                     throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                            stlElementVo.getElementCode() + "校验失败，此elementcode为必填");
+                            stlElement.getElementCode() + "校验失败，此elementcode为必填");
 
                 } else {
-                    Boolean ValueTypeResult = checkValueType(element, stlElementVo);
+                    Boolean ValueTypeResult = checkValueType(element, stlElement);
                     if (!ValueTypeResult) {
                         assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败", "必填元素为空");
                         increaseRedise(successRecordcacheClient, failedRecordcacheClient, false,
                                 tenantId, batchNo);
                         throw new BusinessException(
                                 ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                stlElementVo.getElementCode() + "校验失败，此elementcode属性值类型错误");
+                                stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
                     } else {
                         Boolean IsPKResult = checkIsPK(tenantId, batchNo, objectId, orderId,
                                 applyTime);
@@ -142,7 +141,7 @@ public class CheckBolt extends BaseBasicBolt {
                                     false, tenantId, batchNo);
                             throw new BusinessException(
                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                    stlElementVo.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
+                                    stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
                         } else {
                             assemResult(tenantId, batchNo, objectId, orderId, applyTime, "成功",
                                     "校验通过");
@@ -276,14 +275,14 @@ public class CheckBolt extends BaseBasicBolt {
         }
     }
 
-    private Boolean checkValueType(String element, StlElementVo stlElementVo) throws Exception {
-        String valueType = stlElementVo.getValueType();
+    private Boolean checkValueType(String element, StlElement stlElement) throws Exception {
+        String valueType = stlElement.getValueType();
         if (type.ENUM.equals(valueType)) {
             Boolean flag = false;
             // 系统参数表中获得类型
             ICacheClient cacheClient = CacheClientFactory.getCacheClient(NameSpace.SYS_PARAM_CACHE);
-            String result = cacheClient.get(stlElementVo.getTenantId() + "STL_ORDER_DATA"
-                    + stlElementVo.getElementCode());
+            String result = cacheClient.get(stlElement.getTenantId() + "STL_ORDER_DATA"
+                    + stlElement.getElementCode());
             List list = JSON.parse(result, List.class);
             for (Object o : list) {
                 StlSysParam stlSysParam = (StlSysParam) o;
@@ -321,13 +320,12 @@ public class CheckBolt extends BaseBasicBolt {
         return true;
     }
 
-    private Boolean checkIsNecessary(String element, StlElementVo stlElementVo)
+    private Boolean checkIsNecessary(String element, StlElement stlElement)
             throws BusinessException {
         Boolean result = true;
-        if (stlElementVo.getAttrType().equals("normal")) {
+        if (stlElement.getAttrType().equals("normal")) {
             // 根据元素编码获得流水中元素的值
-            if (IsNecessary.YES.equals(stlElementVo.getIsNecessary())
-                    && StringUtil.isBlank(element)) {
+            if (IsNecessary.YES.equals(stlElement.getIsNecessary()) && StringUtil.isBlank(element)) {
                 result = false;
 
             }
