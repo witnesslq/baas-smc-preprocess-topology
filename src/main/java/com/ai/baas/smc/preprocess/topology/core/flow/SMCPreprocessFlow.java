@@ -11,13 +11,13 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.storm.flow.BaseFlow;
 
 /**
- * GPRS通用拓扑图
+ * 结算预处理拓扑图
  * 
- * @author majun
- * @since 2016.3.16
+ * @author wangjl9
+ * @since 2016.4.18
  */
-public class GPRSGeneralFlow extends BaseFlow {
-    private static Logger logger = LoggerFactory.getLogger(GPRSGeneralFlow.class);
+public class SMCPreprocessFlow extends BaseFlow {
+    private static Logger logger = LoggerFactory.getLogger(SMCPreprocessFlow.class);
 
     @Override
     @SuppressWarnings("unchecked")
@@ -35,7 +35,7 @@ public class GPRSGeneralFlow extends BaseFlow {
     }
 
     public static void main(String[] args) {
-        GPRSGeneralFlow flow = new GPRSGeneralFlow();
+        SMCPreprocessFlow flow = new SMCPreprocessFlow();
         flow.run(args);
     }
 
