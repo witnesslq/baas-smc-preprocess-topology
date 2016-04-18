@@ -1,7 +1,7 @@
 package com.ai.baas.smc.preprocess.topology.core.constant;
 
-public final class SmcConstants {
-    private SmcConstants() {
+public final class SmcHbaseConstants {
+    private SmcHbaseConstants() {
     }
 
     public final static String BATCH_NO_TENANT_ID = "batch_no:tenant_id";
@@ -35,103 +35,43 @@ public final class SmcConstants {
      * 
      * @author mayt
      */
-    public static class StlElement {
+    public static class TableName {
         /**
-         * 是否结算对象<br>
-         * 1：是 0：否<br>
-         * Date: 2016年3月17日 <br>
-         * Copyright (c) 2016 asiainfo.com <br>
-         * 
-         * @author mayt
+         * 流水数据表
          */
-        public static class IsSettlement {
-            public static final String YES = "1";
+        public static final String STL_ORDER_DATA = "stl_order_data_";
 
-            public static final String NO = "0";
-        }
+    }
 
+    /**
+     * 列族<br>
+     * Date: 2016年4月14日 <br>
+     * Copyright (c) 2016 asiainfo.com <br>
+     * 
+     * @author mayt
+     */
+    public static class FamilyName {
         /**
-         * 是否必填<br>
-         * 1：是 0：否<br>
-         * Date: 2016年3月17日 <br>
-         * Copyright (c) 2016 asiainfo.com <br>
-         * 
-         * @author wangjl9
+         * 默认列族名
          */
-        public static class IsNecessary {
-            public static final String YES = "1";
+        public static final String COLUMN_DEF = "col_def";
+    }
 
-            public static final String NO = "0";
-        }
+    public static class StlOrderData {
 
-        public static class StatisticsType {
-            /**
-             * 记录数
-             */
-            public static final String RECORD_COUNT = "record_count";
+        public static final String TENANT_ID = "tenant_id";
 
-            /**
-             * 数值合计
-             */
-            public static final String VALUE_SUM = "value_sum";
-        }
+        public static final String BATCH_NO = "batch_no";
 
-        /**
-         * 状态<br>
-         * Date: 2016年3月17日 <br>
-         * Copyright (c) 2016 asiainfo.com <br>
-         * 
-         * @author mayt
-         */
-        public static class State {
-            /**
-             * 正常
-             */
-            public static final String NORMAL = "1";
+        public static final String OBJECT_ID = "object_id";
 
-            /**
-             * 注销
-             */
-            public static final String CANCELLED = "0";
-        }
+        public static final String ORDER_ID = "order_id";
 
-        public static class type {
+        public static final String APPLY_TIME = "apply_time";
 
-            /**
-             * 统计属性
-             */
-            public static final String STATISTICS = "statistics";
+        public static final String VERIFY_STATE = "verify_state";
 
-            /**
-             * 数值合计
-             */
-            public static final String VALUE_SUM = "value_sum";
-
-            /**
-             * int
-             */
-            public static final String INT = "int";
-
-            /**
-             * float
-             */
-            public static final String FLOAT = "float";
-
-            /**
-             * enum
-             */
-            public static final String ENUM = "enum";
-
-            /**
-             * string
-             */
-            public static final String STRING = "string";
-
-            /**
-             * datetime
-             */
-            public static final String DATETIME = "datetime";
-        }
+        public static final String VERIFY_DESC = "verify_desc";
 
     }
 
@@ -478,7 +418,7 @@ public final class SmcConstants {
             public static final String INCONFORMITY = "不一致";
         }
 
-        public static class FamilyColumnName {
+        public static class ColumnName {
             /**
              * 默认列族名
              */

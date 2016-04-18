@@ -8,7 +8,10 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,15 +22,14 @@ import backtype.storm.topology.base.BaseBasicBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 
-import com.ai.baas.dshm.client.CacheFactoryUtil;
-import com.ai.baas.dshm.client.impl.CacheBLMapper;
 import com.ai.baas.dshm.client.impl.DshmClient;
 import com.ai.baas.dshm.client.interfaces.IDshmClient;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
-import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlBillItemData.ColumnName;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlBillItemData.FamilyColumnName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsNecessary;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcHbaseConstants;
 import com.ai.baas.smc.preprocess.topology.core.util.HbaseClient;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlSysParam;
@@ -52,6 +54,12 @@ public class CheckBolt extends BaseBasicBolt {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckBolt.class);
 
+    private ICacheClient cacheClient;
+
+    private ICacheClient successRecordcacheClient;
+
+    private ICacheClient failedRecordcacheClient;
+
     public CheckBolt(String aOutputFields) {
         outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
     }
@@ -60,6 +68,16 @@ public class CheckBolt extends BaseBasicBolt {
     public void prepare(Map stormConf, TopologyContext context) {
         // TODO Auto-generated method stub
         super.prepare(stormConf, context);
+        if (cacheClient == null) {
+            cacheClient = CacheClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
+        }
+        if (successRecordcacheClient == null) {
+            successRecordcacheClient = CacheClientFactory.getCacheClient(NameSpace.SUCCESS_RECORD);
+        }
+        if (failedRecordcacheClient == null) {
+            failedRecordcacheClient = CacheClientFactory.getCacheClient(NameSpace.FAILED_RECORD);
+        }
+
         /* 初始化hbase */
         HBaseProxy.loadResource(stormConf);
         /* 2.获取报文格式信息 */
@@ -91,12 +109,7 @@ public class CheckBolt extends BaseBasicBolt {
             String orderId = data.get(SmcConstants.ORDER_ID);
             String applyTime = data.get(SmcConstants.APPLY_TIME);
             // 数据导入日志表中查询此批次数据的数据对象(redis)
-            ICacheClient cacheClient = CacheClientFactory
-                    .getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
-            ICacheClient successRecordcacheClient = CacheClientFactory
-                    .getCacheClient(NameSpace.SUCCESS_RECORD);
-            ICacheClient failedRecordcacheClient = CacheClientFactory
-                    .getCacheClient(NameSpace.FAILED_RECORD);
+
             List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
 
             Map<String, String> map = results.get(0);
@@ -112,44 +125,50 @@ public class CheckBolt extends BaseBasicBolt {
             }
             for (Object o : list) {
                 StlElement stlElement = (StlElement) o;
-                String element = data.get(stlElement.getElementCode());
-                Boolean NecessaryResult = checkIsNecessary(element, stlElement);
-                if (!NecessaryResult) {
-                    // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
-                    assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败", "必填元素为空");
-                    increaseRedise(successRecordcacheClient, failedRecordcacheClient, false,
-                            tenantId, batchNo);
-                    throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                            stlElement.getElementCode() + "校验失败，此elementcode为必填");
-
-                } else {
-                    Boolean ValueTypeResult = checkValueType(element, stlElement);
-                    if (!ValueTypeResult) {
-                        assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败", "必填元素为空");
+                if (stlElement.getAttrType().equals("normal")) {
+                    String element = data.get(stlElement.getElementCode());
+                    Boolean NecessaryResult = checkIsNecessary(element, stlElement);
+                    if (!NecessaryResult) {
+                        // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
+                        assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime,
+                                "失败", "必填元素为空");
                         increaseRedise(successRecordcacheClient, failedRecordcacheClient, false,
                                 tenantId, batchNo);
                         throw new BusinessException(
                                 ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
+                                stlElement.getElementCode() + "校验失败，此elementcode为必填");
+
                     } else {
-                        Boolean IsPKResult = checkIsPK(tenantId, batchNo, objectId, orderId,
-                                applyTime);
-                        if (!IsPKResult) {
-                            assemResult(tenantId, batchNo, objectId, orderId, applyTime, "失败",
-                                    "是否主键与设定不符");
+                        Boolean ValueTypeResult = checkValueType(element, stlElement);
+                        if (!ValueTypeResult) {
+                            assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
+                                    applyTime, "失败", "必填元素为空");
                             increaseRedise(successRecordcacheClient, failedRecordcacheClient,
                                     false, tenantId, batchNo);
                             throw new BusinessException(
                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                    stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
+                                    stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
                         } else {
-                            assemResult(tenantId, batchNo, objectId, orderId, applyTime, "成功",
-                                    "校验通过");
-                            increaseRedise(successRecordcacheClient, failedRecordcacheClient, true,
-                                    tenantId, batchNo);
+                            Boolean IsPKResult = checkIsPK(tenantId, batchNo, objectId, orderId,
+                                    applyTime);
+                            if (!IsPKResult) {
+                                assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
+                                        applyTime, "失败", "是否主键与设定不符");
+                                increaseRedise(successRecordcacheClient, failedRecordcacheClient,
+                                        false, tenantId, batchNo);
+                                throw new BusinessException(
+                                        ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+                                        stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
+                            } else {
+                                assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
+                                        applyTime, "成功", "校验通过");
+                                increaseRedise(successRecordcacheClient, failedRecordcacheClient,
+                                        true, tenantId, batchNo);
+                            }
                         }
                     }
                 }
+
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -220,8 +239,10 @@ public class CheckBolt extends BaseBasicBolt {
         }
     }
 
-    private void assemResult(String tenantId, String batchNo, String objectId, String orderId,
-            String applyTime, String verifyState, String verifydesc) throws Exception {
+    private void assemResult(String tenantId, String batchNo, String billTimeSn, String objectId,
+            String orderId, String applyTime, String verifyState, String verifydesc)
+            throws Exception {
+        String yyyyMm = billTimeSn.substring(0, 6);
         StringBuilder stlOrderDatakey = new StringBuilder();
         stlOrderDatakey.append(tenantId);
         stlOrderDatakey.append("_");
@@ -233,24 +254,25 @@ public class CheckBolt extends BaseBasicBolt {
         stlOrderDatakey.append("_");
         stlOrderDatakey.append(applyTime);
         String tableName = "stl_order_data_" + applyTime.substring(0, 6);
-        String[] column = new String[7];
-        column[0] = "tenant_id";
-        column[1] = "batch_no";
-        column[2] = "object_id";
-        column[3] = "order_id";
-        column[4] = "apply_time";
-        column[5] = "verify_state";
-        column[6] = "verify_desc";
-        String[] value = new String[7];
-        value[0] = tenantId;
-        value[1] = batchNo;
-        value[2] = objectId;
-        value[3] = orderId;
-        value[4] = applyTime;
-        value[5] = verifyState;
-        value[6] = verifydesc;
-        HbaseClient.addRow(tableName, stlOrderDatakey.toString(), ColumnName.COLUMN_DEF, column,
-                value);
+
+        Table tableStlOrderData = HBaseProxy.getConnection().getTable(
+                TableName.valueOf(SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm));
+        Put put = new Put(stlOrderDatakey.toString().getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.TENANT_ID.getBytes(), tenantId.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.BATCH_NO.getBytes(), batchNo.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.OBJECT_ID.getBytes(), objectId.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.ORDER_ID.getBytes(), orderId.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.APPLY_TIME.getBytes(), applyTime.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.VERIFY_STATE.getBytes(), verifyState.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.VERIFY_DESC.getBytes(), verifydesc.getBytes());
+        tableStlOrderData.put(put);
     }
 
     private Boolean checkIsPK(String tenantId, String batchNo, String objectId, String orderId,
@@ -280,7 +302,7 @@ public class CheckBolt extends BaseBasicBolt {
         if (type.ENUM.equals(valueType)) {
             Boolean flag = false;
             // 系统参数表中获得类型
-            ICacheClient cacheClient = CacheClientFactory.getCacheClient(NameSpace.SYS_PARAM_CACHE);
+            CacheClientFactory.getCacheClient(NameSpace.SYS_PARAM_CACHE);
             String result = cacheClient.get(stlElement.getTenantId() + "STL_ORDER_DATA"
                     + stlElement.getElementCode());
             List list = JSON.parse(result, List.class);
@@ -308,7 +330,7 @@ public class CheckBolt extends BaseBasicBolt {
             Float.parseFloat(element);
         } else if (type.DATETIME.equals(valueType)) {
             try {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddhhmiss");
                 Date date = new Date();
                 date = sdf.parse(element); // Mon Jan 14 00:00:00 CST 2013
 
@@ -323,19 +345,15 @@ public class CheckBolt extends BaseBasicBolt {
     private Boolean checkIsNecessary(String element, StlElement stlElement)
             throws BusinessException {
         Boolean result = true;
-        if (stlElement.getAttrType().equals("normal")) {
-            // 根据元素编码获得流水中元素的值
-            if (IsNecessary.YES.equals(stlElement.getIsNecessary()) && StringUtil.isBlank(element)) {
-                result = false;
+        // 根据元素编码获得流水中元素的值
+        if (IsNecessary.YES.equals(stlElement.getIsNecessary()) && StringUtil.isBlank(element)) {
+            result = false;
 
-            }
         }
         return result;
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
-        ICacheClient cacheClient = CacheFactoryUtil
-                .getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         IDshmClient client = null;
         if (client == null)
             client = new DshmClient();

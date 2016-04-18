@@ -34,6 +34,7 @@ import com.ai.baas.storm.exception.BusinessException;
 import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
+import com.ai.baas.storm.util.HBaseProxy;
 import com.ai.opt.sdk.cache.factory.CacheClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
@@ -43,13 +44,24 @@ import com.alibaba.fastjson.JSON;
 public class StatisticsBolt extends BaseBasicBolt {
     private static final long serialVersionUID = 8475030105476807164L;
 
-    ICacheClient cacheClient = CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
+    ICacheClient cacheClientDSHM = CacheFactoryUtil
+            .getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
 
     private MappingRule[] mappingRules = new MappingRule[2];
 
     private static final Logger logger = LoggerFactory.getLogger(CheckBolt.class);
 
     private String[] outputFields;
+
+    private ICacheClient cacheClient;
+
+    private ICacheClient cacheClientElement;
+
+    private ICacheClient cacheClientCount;
+
+    private ICacheClient cacheElementAttr;
+
+    private ICacheClient cacheStatsTimes;
 
     public StatisticsBolt(String aOutputFields) {
         outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
@@ -59,6 +71,27 @@ public class StatisticsBolt extends BaseBasicBolt {
     public void prepare(Map stormConf, TopologyContext context) {
         // TODO Auto-generated method stub
         super.prepare(stormConf, context);
+        if (cacheClient == null) {
+            cacheClient = CacheClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
+        }
+        if (cacheClientElement == null) {
+            cacheClientElement = CacheClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
+        }
+        if (cacheClientCount == null) {
+            cacheClientCount = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES_COUNT);
+        }
+        if (cacheElementAttr == null) {
+            cacheElementAttr = CacheClientFactory.getCacheClient(NameSpace.STL_OBJ_STAT);
+        }
+        if (cacheStatsTimes == null) {
+            cacheClient = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
+        }
+        /* 初始化hbase */
+        HBaseProxy.loadResource(stormConf);
+        /* 2.获取报文格式信息 */
+        mappingRules[0] = MappingRule.getMappingRule(MappingRule.FORMAT_TYPE_OUTPUT,
+                BaseConstants.JDBC_DEFAULT);
+        mappingRules[1] = mappingRules[0];
     }
 
     @Override
@@ -78,15 +111,6 @@ public class StatisticsBolt extends BaseBasicBolt {
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
             int totalRecord = Integer.parseInt(data.get(SmcConstants.TOTAL_RECORD));
-            ICacheClient cacheClient = CacheClientFactory
-                    .getCacheClient(NameSpace.OBJECT_POLICY_ELEMENT_CACHE);
-            ICacheClient cacheClientElement = CacheClientFactory
-                    .getCacheClient(NameSpace.ELEMENT_CACHE);
-            ICacheClient cacheClientCount = CacheClientFactory
-                    .getCacheClient(NameSpace.STATS_TIMES_COUNT);
-            ICacheClient cacheElementAttr = CacheClientFactory
-                    .getCacheClient(NameSpace.STL_OBJ_STAT);
-            ICacheClient cacheStatsTimes = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
             List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
             Map<String, String> map = results.get(0);
             String objectId = map.get("OBJECT_ID");
@@ -104,18 +128,17 @@ public class StatisticsBolt extends BaseBasicBolt {
                         for (Object oo : list) {
 
                             StlElement stlElementVo = (StlElement) oo;
-                            // 租户ID+政策ID+账期+统计元素ID+统计元素值
-                            String key = assemKey(SmcSeqUtil.createDataId().toString(), tenantId,
-                                    policyId.toString(), billTimeSn, stlElementVo.getElementId()
-                                            .toString(), data.get(stlElementVo.getElementCode()));
-
+                            // 租户ID+政策ID+账期+统计元素ID
+                            String key = assemKey(tenantId, policyId.toString(), billTimeSn,
+                                    stlElementVo.getElementId().toString());
                             ICacheClient cacheClientStlObjStat = CacheClientFactory
                                     .getCacheClient(NameSpace.STL_OBJ_STAT);
                             String result = cacheClientStlObjStat.get(key);
                             if (StringUtil.isBlank(result)) {
-                                assemValue(tenantId, policyId.toString(), billTimeSn, objectId,
-                                        stlElementVo.getElementId().toString(),
-                                        data.get(stlElementVo.getElementCode()), "0", "0");
+                                String value = assemValue(tenantId, policyId.toString(),
+                                        billTimeSn, objectId, stlElementVo.getElementId()
+                                                .toString(), "0", "0");
+                                cacheClientStlObjStat.set(key, value);
                             }
                             // 获得统计元素属性表的对象list组个进行限定条件校验，
                             String elementResult = cacheElementAttr.get(tenantId + "."
@@ -242,11 +265,8 @@ public class StatisticsBolt extends BaseBasicBolt {
     private void increase(String resultRecord, Float num, ICacheClient cacheClientStlObjStat,
             String key, boolean b) {
         String[] result = resultRecord.split("_");
-        String statisticsVal = result[7];
-        String times = result[8];
-        if (b) {
-
-        }
+        String statisticsVal = result[6];
+        String times = result[7];
         Long timesNew = Long.parseLong(times) + 1l;
         StringBuilder resultNew = new StringBuilder();
         resultNew.append(result[0]);
@@ -261,13 +281,11 @@ public class StatisticsBolt extends BaseBasicBolt {
         resultNew.append("_");
         resultNew.append(result[5]);
         resultNew.append("_");
-        resultNew.append(result[6]);
-        resultNew.append("_");
         if (b) {
             Float statisticsValNew = Float.parseFloat(statisticsVal) + num;
             resultNew.append(statisticsValNew.toString());
         } else {
-            resultNew.append((result[7]));
+            resultNew.append((result[6]));
         }
         resultNew.append("_");
         resultNew.append(timesNew.toString());
@@ -291,13 +309,10 @@ public class StatisticsBolt extends BaseBasicBolt {
         return flag;
     }
 
-    // 租户ID+政策ID+账期+统计元素ID+统计元素值
+    // 租户ID+政策ID+账期+统计元素ID
 
-    private String assemKey(String dataId, String tenantId, String PolicyId, String billTimeSn,
-            String elementId, String elementValue) {
+    private String assemKey(String tenantId, String PolicyId, String billTimeSn, String elementId) {
         StringBuilder stlObjStatkey = new StringBuilder();
-        stlObjStatkey.append(dataId);
-        stlObjStatkey.append("_");
         stlObjStatkey.append(tenantId);
         stlObjStatkey.append("_");
         stlObjStatkey.append(PolicyId);
@@ -305,13 +320,11 @@ public class StatisticsBolt extends BaseBasicBolt {
         stlObjStatkey.append(billTimeSn);
         stlObjStatkey.append("_");
         stlObjStatkey.append(elementId);
-        stlObjStatkey.append("_");
-        stlObjStatkey.append(elementValue);
         return stlObjStatkey.toString();
     }
 
     private String assemValue(String tenantId, String policyId, String billTimeSn, String objectId,
-            String elementId, String elementValue, String statisticsVal, String times) {
+            String elementId, String statisticsVal, String times) {
         StringBuilder stlObjStatValue = new StringBuilder();
         stlObjStatValue.append(SmcSeqUtil.createDataId());
         stlObjStatValue.append("_");
@@ -325,8 +338,6 @@ public class StatisticsBolt extends BaseBasicBolt {
         stlObjStatValue.append("_");
         stlObjStatValue.append(elementId);
         stlObjStatValue.append("_");
-        stlObjStatValue.append(elementValue);
-        stlObjStatValue.append("_");
         stlObjStatValue.append(statisticsVal);
         stlObjStatValue.append("_");
         stlObjStatValue.append(times);
@@ -334,14 +345,12 @@ public class StatisticsBolt extends BaseBasicBolt {
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
-        ICacheClient cacheClient = CacheFactoryUtil
-                .getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         IDshmClient client = null;
         if (client == null)
             client = new DshmClient();
         Map<String, String> logParam = new TreeMap<String, String>();
         logParam.put(SmcConstants.BATCH_NO_TENANT_ID, batchNo + ":" + tenantId);
-        return client.list("cp_price_info").where(logParam).executeQuery(cacheClient);
+        return client.list("cp_price_info").where(logParam).executeQuery(cacheClientDSHM);
     }
 
     @Override
