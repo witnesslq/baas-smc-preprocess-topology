@@ -63,9 +63,9 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     private ICacheClient cacheStatsTimes;
 
-    public StatisticsBolt(String aOutputFields) {
-        outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
-    }
+    // public StatisticsBolt(String aOutputFields) {
+    // outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
+    // }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context) {

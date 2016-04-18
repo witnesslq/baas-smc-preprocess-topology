@@ -1,7 +1,5 @@
 package com.ai.baas.smc.preprocess.topology.core.flow;
 
-import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,6 +7,7 @@ import com.ai.baas.smc.preprocess.topology.core.bolt.CheckBolt;
 import com.ai.baas.smc.preprocess.topology.core.bolt.StatisticsBolt;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.storm.flow.BaseFlow;
+import com.ai.baas.storm.util.BaseConstants;
 
 /**
  * 结算预处理拓扑图
@@ -23,14 +22,11 @@ public class SMCPreprocessFlow extends BaseFlow {
     @SuppressWarnings("unchecked")
     public void define() {
         super.setKafkaSpout();
-        Map<String, String> outputFieldMapping = (Map<String, String>) conf
-                .get("bmc.gprs.bolt.output.field");
-        builder.setBolt(SmcConstants.CHECK_BOLT,
-                new CheckBolt(outputFieldMapping.get(SmcConstants.CHECK_BOLT)), 1).shuffleGrouping(
-                SmcConstants.KAFKA_SPOUT_NAME);
-        builder.setBolt("duplicate-checking",
-                new StatisticsBolt(outputFieldMapping.get(SmcConstants.STATISTICS_BOLT)), 1)
-                .shuffleGrouping(SmcConstants.STATISTICS_BOLT);
+
+        builder.setBolt(SmcConstants.CHECK_BOLT, new CheckBolt(), 1).shuffleGrouping(
+                BaseConstants.KAFKA_SPOUT_NAME);
+        builder.setBolt(SmcConstants.STATISTICS_BOLT, new StatisticsBolt(), 1).shuffleGrouping(
+                BaseConstants.KAFKA_SPOUT_NAME);
 
     }
 

@@ -19,8 +19,8 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.BasicOutputCollector;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseBasicBolt;
-import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
+import backtype.storm.tuple.Values;
 
 import com.ai.baas.dshm.client.impl.DshmClient;
 import com.ai.baas.dshm.client.interfaces.IDshmClient;
@@ -60,9 +60,9 @@ public class CheckBolt extends BaseBasicBolt {
 
     private ICacheClient failedRecordcacheClient;
 
-    public CheckBolt(String aOutputFields) {
-        outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
-    }
+    // public CheckBolt(String aOutputFields) {
+    // outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
+    // }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context) {
@@ -164,6 +164,8 @@ public class CheckBolt extends BaseBasicBolt {
                                         applyTime, "成功", "校验通过");
                                 increaseRedise(successRecordcacheClient, failedRecordcacheClient,
                                         true, tenantId, batchNo);
+                                collector.emit(new Values(inputData));
+
                             }
                         }
                     }
@@ -253,7 +255,6 @@ public class CheckBolt extends BaseBasicBolt {
         stlOrderDatakey.append(orderId);
         stlOrderDatakey.append("_");
         stlOrderDatakey.append(applyTime);
-        String tableName = "stl_order_data_" + applyTime.substring(0, 6);
 
         Table tableStlOrderData = HBaseProxy.getConnection().getTable(
                 TableName.valueOf(SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm));
@@ -365,7 +366,7 @@ public class CheckBolt extends BaseBasicBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         // TODO Auto-generated method stub
-        declarer.declare(new Fields(outputFields));
+        // declarer.declare(new Fields(outputFields));
 
     }
 
