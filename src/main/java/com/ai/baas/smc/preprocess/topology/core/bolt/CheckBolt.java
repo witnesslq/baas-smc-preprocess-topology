@@ -22,6 +22,8 @@ import backtype.storm.topology.base.BaseBasicBolt;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
+import com.ai.baas.dshm.client.CacheFactoryUtil;
+import com.ai.baas.dshm.client.impl.CacheBLMapper;
 import com.ai.baas.dshm.client.impl.DshmClient;
 import com.ai.baas.dshm.client.interfaces.IDshmClient;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
@@ -64,6 +66,10 @@ public class CheckBolt extends BaseBasicBolt {
 
     private ICacheClient countCacheClient;
 
+    private ICacheClient calParamCacheClient;
+
+    private IDshmClient dshmClient;
+
     @Override
     public void prepare(Map stormConf, TopologyContext context) {
         // TODO Auto-generated method stub
@@ -79,6 +85,12 @@ public class CheckBolt extends BaseBasicBolt {
         }
         if (countCacheClient == null) {
             countCacheClient = CacheClientFactory.getCacheClient(NameSpace.CHECK_COUNT_CACHE);
+        }
+        if (dshmClient == null) {
+            dshmClient = new DshmClient();
+        }
+        if (calParamCacheClient == null) {
+            calParamCacheClient = CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         }
 
         /* 初始化hbase */
@@ -364,12 +376,9 @@ public class CheckBolt extends BaseBasicBolt {
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
-        IDshmClient client = null;
-        if (client == null)
-            client = new DshmClient();
         Map<String, String> logParam = new TreeMap<String, String>();
         logParam.put(SmcConstants.BATCH_NO_TENANT_ID, batchNo + ":" + tenantId);
-        return client.list("cp_price_info").where(logParam).executeQuery(cacheClient);
+        return dshmClient.list("cp_price_info").where(logParam).executeQuery(calParamCacheClient);
     }
 
     @Override

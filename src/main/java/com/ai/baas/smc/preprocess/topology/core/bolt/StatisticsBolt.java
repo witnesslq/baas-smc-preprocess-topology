@@ -43,9 +43,6 @@ import com.alibaba.fastjson.JSON;
 public class StatisticsBolt extends BaseBasicBolt {
     private static final long serialVersionUID = 8475030105476807164L;
 
-    ICacheClient cacheClientDSHM = CacheFactoryUtil
-            .getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
-
     private MappingRule[] mappingRules = new MappingRule[2];
 
     private static final Logger logger = LoggerFactory.getLogger(CheckBolt.class);
@@ -63,6 +60,10 @@ public class StatisticsBolt extends BaseBasicBolt {
     private ICacheClient cacheStatsTimes;
 
     private ICacheClient countCacheClient;
+
+    private ICacheClient calParamCacheClient;
+
+    private IDshmClient dshmClient;
 
     // public StatisticsBolt(String aOutputFields) {
     // outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
@@ -89,6 +90,12 @@ public class StatisticsBolt extends BaseBasicBolt {
         }
         if (countCacheClient == null) {
             countCacheClient = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
+        }
+        if (dshmClient == null) {
+            dshmClient = new DshmClient();
+        }
+        if (calParamCacheClient == null) {
+            calParamCacheClient = CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         }
         /* 初始化hbase */
         HBaseProxy.loadResource(stormConf);
@@ -349,12 +356,9 @@ public class StatisticsBolt extends BaseBasicBolt {
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
-        IDshmClient client = null;
-        if (client == null)
-            client = new DshmClient();
         Map<String, String> logParam = new TreeMap<String, String>();
         logParam.put(SmcConstants.BATCH_NO_TENANT_ID, batchNo + ":" + tenantId);
-        return client.list("cp_price_info").where(logParam).executeQuery(cacheClientDSHM);
+        return dshmClient.list("cp_price_info").where(logParam).executeQuery(calParamCacheClient);
     }
 
     @Override
