@@ -29,11 +29,13 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlBillItemData.FamilyColumnName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsNecessary;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcExceptCodeConstant;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcHbaseConstants;
 import com.ai.baas.smc.preprocess.topology.core.util.HbaseClient;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlSysParam;
 import com.ai.baas.storm.exception.BusinessException;
+import com.ai.baas.storm.failbill.FailBillHandler;
 import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
@@ -60,9 +62,7 @@ public class CheckBolt extends BaseBasicBolt {
 
     private ICacheClient failedRecordcacheClient;
 
-    // public CheckBolt(String aOutputFields) {
-    // outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
-    // }
+    private ICacheClient countCacheClient;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context) {
@@ -76,6 +76,9 @@ public class CheckBolt extends BaseBasicBolt {
         }
         if (failedRecordcacheClient == null) {
             failedRecordcacheClient = CacheClientFactory.getCacheClient(NameSpace.FAILED_RECORD);
+        }
+        if (countCacheClient == null) {
+            countCacheClient = CacheClientFactory.getCacheClient(NameSpace.CHECK_COUNT_CACHE);
         }
 
         /* 初始化hbase */
@@ -134,10 +137,11 @@ public class CheckBolt extends BaseBasicBolt {
                                 "失败", "必填元素为空");
                         increaseRedise(successRecordcacheClient, failedRecordcacheClient, false,
                                 tenantId, batchNo);
+                        FailBillHandler.addFailBillMsg(data, SmcConstants.BILL_DETAIL_CHECK_BOLT,
+                                SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
                         throw new BusinessException(
                                 ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                 stlElement.getElementCode() + "校验失败，此elementcode为必填");
-
                     } else {
                         Boolean ValueTypeResult = checkValueType(element, stlElement);
                         if (!ValueTypeResult) {
@@ -145,6 +149,9 @@ public class CheckBolt extends BaseBasicBolt {
                                     applyTime, "失败", "必填元素为空");
                             increaseRedise(successRecordcacheClient, failedRecordcacheClient,
                                     false, tenantId, batchNo);
+                            FailBillHandler.addFailBillMsg(data,
+                                    SmcConstants.BILL_DETAIL_CHECK_BOLT,
+                                    SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
                             throw new BusinessException(
                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                     stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
@@ -156,6 +163,9 @@ public class CheckBolt extends BaseBasicBolt {
                                         applyTime, "失败", "是否主键与设定不符");
                                 increaseRedise(successRecordcacheClient, failedRecordcacheClient,
                                         false, tenantId, batchNo);
+                                FailBillHandler.addFailBillMsg(data,
+                                        SmcConstants.BILL_DETAIL_CHECK_BOLT,
+                                        SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
                                 throw new BusinessException(
                                         ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                         stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
@@ -170,7 +180,6 @@ public class CheckBolt extends BaseBasicBolt {
                         }
                     }
                 }
-
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -203,8 +212,8 @@ public class CheckBolt extends BaseBasicBolt {
                         successValueFirst.toString());
             } else {
                 String num = successValue.split("-")[3];
-                int numInt = Integer.parseInt(num) + 1;
-                successValue.replace(num, Integer.toString(numInt));
+                Long numLong = countCacheClient.incr(num.getBytes());
+                successValue.replace(num, numLong.toString());
                 successRecordcacheClient.set(successBuilder.toString(), successValue);
             }
             // 成功记录数加1
@@ -233,8 +242,8 @@ public class CheckBolt extends BaseBasicBolt {
                         failedValueValueFirst.toString());
             } else {
                 String num = failedValue.split("-")[3];
-                int numInt = Integer.parseInt(num) + 1;
-                failedValue.replace(num, Integer.toString(numInt));
+                Long numLong = countCacheClient.incr(num.getBytes());
+                failedValue.replace(num, Long.toString(numLong));
                 successRecordcacheClient.set(failedBuilder.toString(), failedValue);
             }
             // 失败记录数加1

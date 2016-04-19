@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wltea.expression.ExpressionEvaluator;
@@ -63,6 +62,8 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     private ICacheClient cacheStatsTimes;
 
+    private ICacheClient countCacheClient;
+
     // public StatisticsBolt(String aOutputFields) {
     // outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
     // }
@@ -84,7 +85,10 @@ public class StatisticsBolt extends BaseBasicBolt {
             cacheElementAttr = CacheClientFactory.getCacheClient(NameSpace.STL_OBJ_STAT);
         }
         if (cacheStatsTimes == null) {
-            cacheClient = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
+            cacheStatsTimes = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
+        }
+        if (countCacheClient == null) {
+            countCacheClient = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
         }
         /* 初始化hbase */
         HBaseProxy.loadResource(stormConf);
@@ -162,7 +166,7 @@ public class StatisticsBolt extends BaseBasicBolt {
                                     if (StatisticsType.RECORD_COUNT.equals(stlElementVo
                                             .getStatisticsType())) {
 
-                                        increase(resultValue, 1F, cacheClientStlObjStat, key, true);
+                                        increase(resultValue, 1L, cacheClientStlObjStat, key, true);
 
                                     } else if (StatisticsType.VALUE_SUM.equals(stlElementVo
                                             .getStatisticsType())) {
@@ -180,12 +184,12 @@ public class StatisticsBolt extends BaseBasicBolt {
                                         StlElement stlElement = JSON.parseObject(elementVoString,
                                                 StlElement.class);
 
-                                        Float num = Float.parseFloat(data.get(stlElement
+                                        Long num = Long.parseLong(data.get(stlElement
                                                 .getElementCode()));
                                         increase(resultValue, num, cacheClientStlObjStat, key, true);
                                     }
                                 } else {// 如果不满足则结算对象统计数据表的 统计次数加1
-                                    increase(resultValue, 1F, cacheClientStlObjStat, key, false);
+                                    increase(resultValue, 1L, cacheClientStlObjStat, key, false);
                                 }
                             }
                         }
@@ -262,7 +266,7 @@ public class StatisticsBolt extends BaseBasicBolt {
     }
 
     //
-    private void increase(String resultRecord, Float num, ICacheClient cacheClientStlObjStat,
+    private void increase(String resultRecord, Long num, ICacheClient cacheClientStlObjStat,
             String key, boolean b) {
         String[] result = resultRecord.split("_");
         String statisticsVal = result[6];
@@ -282,7 +286,7 @@ public class StatisticsBolt extends BaseBasicBolt {
         resultNew.append(result[5]);
         resultNew.append("_");
         if (b) {
-            Float statisticsValNew = Float.parseFloat(statisticsVal) + num;
+            Long statisticsValNew = countCacheClient.incrBy(statisticsVal.getBytes(), num);
             resultNew.append(statisticsValNew.toString());
         } else {
             resultNew.append((result[6]));

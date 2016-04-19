@@ -28,6 +28,8 @@ public final class SmcConstants {
 
     public static final String KAFKA_SPOUT_NAME = "kafka-spout";
 
+    public static final String BILL_DETAIL_CHECK_BOLT = "bill_detail_checking";
+
     /**
      * 基础元素表<br>
      * Date: 2016年3月17日 <br>
@@ -185,6 +187,11 @@ public final class SmcConstants {
         public static final String STATS_TIMES = "stats_times";
 
         public static final String STATS_TIMES_COUNT = "stats_times_count";
+
+        /**
+         * redis计数
+         */
+        public static final String CHECK_COUNT_CACHE = "com.ai.baas.smc.cache.check.count";
 
     }
 
