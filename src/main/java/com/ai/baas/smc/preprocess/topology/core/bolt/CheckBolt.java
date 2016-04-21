@@ -222,11 +222,15 @@ public class CheckBolt extends BaseBasicBolt {
                 successValueFirst.append("1");
                 successRecordcacheClient.set(successBuilder.toString(),
                         successValueFirst.toString());
+                System.out.println("成功key值为：" + successBuilder.toString() + "value值为："
+                        + successValueFirst.toString());
             } else {
                 String num = successValue.split("-")[3];
                 Long numLong = countCacheClient.incr(num.getBytes());
                 successValue.replace(num, numLong.toString());
                 successRecordcacheClient.set(successBuilder.toString(), successValue);
+                System.out.println("成功key值为：" + successBuilder.toString() + "value值为："
+                        + successValue);
             }
             // 成功记录数加1
         } else {
@@ -252,11 +256,15 @@ public class CheckBolt extends BaseBasicBolt {
                 failedValueValueFirst.append("1");
                 failedRecordcacheClient.set(failedBuilder.toString(),
                         failedValueValueFirst.toString());
+                System.out.println("失败key值为：" + failedBuilder.toString() + "value值为："
+                        + failedValueValueFirst.toString());
             } else {
                 String num = failedValue.split("-")[3];
                 Long numLong = countCacheClient.incr(num.getBytes());
                 failedValue.replace(num, Long.toString(numLong));
                 successRecordcacheClient.set(failedBuilder.toString(), failedValue);
+                System.out
+                        .println("失败key值为：" + failedBuilder.toString() + "value值为：" + failedValue);
             }
             // 失败记录数加1
         }

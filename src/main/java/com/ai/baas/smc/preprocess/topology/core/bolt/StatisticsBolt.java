@@ -89,7 +89,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             cacheStatsTimes = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
         }
         if (countCacheClient == null) {
-            countCacheClient = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
+            countCacheClient = CacheClientFactory.getCacheClient(NameSpace.CHECK_COUNT_CACHE);
         }
         if (dshmClient == null) {
             dshmClient = new DshmClient();

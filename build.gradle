@@ -7,12 +7,15 @@ sourceCompatibility = 1.7
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 
-repositories { maven{ url "http://10.1.228.199:18081/nexus/content/groups/public/"  } }
+repositories { maven{ url "http://10.1.228.199:18081/nexus/content/groups/public/"
+    } }
 
 configurations {
     provided
     compile.extendsFrom provided
 }
+
+configurations.all { resolutionStrategy.cacheChangingModulesFor 1, 'minutes' }
 
 dependencies{
     // 单包，无第三方依赖
@@ -33,6 +36,21 @@ dependencies{
     provided 'org.apache.storm:storm-core:0.9.6'
 
 }
+
+
+jar {
+    dependsOn configurations.runtime
+    from {
+        (configurations.runtime - configurations.provided).collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    } {
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+    }
+}
+
 
 sourceSets {
     main {
