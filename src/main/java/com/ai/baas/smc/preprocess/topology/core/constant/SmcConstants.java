@@ -137,6 +137,25 @@ public final class SmcConstants {
 
     }
 
+    public static class DshmKeyName {
+        /**
+         * 租户id
+         */
+        public static final String TENANT_ID = "tenant_id";
+
+        /**
+         * 租户id
+         */
+        public static final String BATCH_NO = "batch_no";
+    }
+
+    public static class DshmTableName {
+        /**
+         * 日志表
+         */
+        public static final String STL_IMPORT_LOG = "stl_import_log";
+    }
+
     /**
      * 账单格式定义<br>
      * Date: 2016年3月17日 <br>
@@ -176,7 +195,9 @@ public final class SmcConstants {
 
         public static final String OBJECT_ELEMENT_CACHE = "com.ai.baas.smc.cache.ObjectToElementCache";
 
-        public static final String OBJECT_POLICY_ELEMENT_CACHE = "com.ai.baas.smc.cache.ObjectToPolicyToElementCache";
+        public static final String OBJECT_POLICY_CACHE = "com.ai.baas.smc.cache.ObjectToPolicyCache";
+
+        public static final String POLICY_ELEMENT_CACHE = "com.ai.baas.smc.cache.PolicyToElementCache";
 
         public static final String SUCCESS_RECORD = "success_record";
 

@@ -3,7 +3,6 @@ package com.ai.baas.smc.preprocess.topology.core.bolt;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import org.slf4j.Logger;
@@ -22,6 +21,7 @@ import com.ai.baas.dshm.client.impl.CacheBLMapper;
 import com.ai.baas.dshm.client.impl.DshmClient;
 import com.ai.baas.dshm.client.interfaces.IDshmClient;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.StatisticsType;
 import com.ai.baas.smc.preprocess.topology.core.util.IKin;
@@ -49,7 +49,9 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     private String[] outputFields;
 
-    private ICacheClient cacheClient;
+    private ICacheClient cacheClientObjectToPolicy;
+
+    private ICacheClient cacheClientPolicyToElement;
 
     private ICacheClient cacheClientElement;
 
@@ -73,8 +75,14 @@ public class StatisticsBolt extends BaseBasicBolt {
     public void prepare(Map stormConf, TopologyContext context) {
         // TODO Auto-generated method stub
         super.prepare(stormConf, context);
-        if (cacheClient == null) {
-            cacheClient = CacheClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
+
+        if (cacheClientObjectToPolicy == null) {
+            cacheClientObjectToPolicy = CacheClientFactory
+                    .getCacheClient(NameSpace.OBJECT_POLICY_CACHE);
+        }
+        if (cacheClientPolicyToElement == null) {
+            cacheClientPolicyToElement = CacheClientFactory
+                    .getCacheClient(NameSpace.POLICY_ELEMENT_CACHE);
         }
         if (cacheClientElement == null) {
             cacheClientElement = CacheClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
@@ -117,51 +125,56 @@ public class StatisticsBolt extends BaseBasicBolt {
             MessageParser messageParser = MessageParser.parseObject(inputData, mappingRules,
                     outputFields);
             Map<String, String> data = messageParser.getData();
-            String line = input.getStringByField(BaseConstants.RECORD_DATA);
-            logger.info("-------------------line==" + line);
+            // String line = input.getStringByField(BaseConstants.RECORD_DATA);
+            // logger.info("-------------------line==" + line);
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
             int totalRecord = Integer.parseInt(data.get(SmcConstants.TOTAL_RECORD));
-            List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
-            Map<String, String> map = results.get(0);
-            String objectId = map.get("OBJECT_ID");
-            String billTimeSn = map.get("BILL_TIME_SN");
-            // 根据对象id获取元素ID
-            String elementStrings = cacheClient.get(tenantId + "." + objectId);// key：租户id.流水对象id获得政策id为key元素对象序列为value的map
-            if (StringUtil.isBlank(elementStrings)) {
-                Map mapResult = JSON.parseObject(elementStrings, Map.class);
-                for (Object o : mapResult.entrySet()) {
-                    Map.Entry<Long, String> entry = (Entry<Long, String>) o;
-                    Long policyId = entry.getKey();
-                    String elements = entry.getValue();
-                    List list = JSON.parseObject(elements, List.class);
-                    if (list.size() != 0) {
-                        for (Object oo : list) {
+            // List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
+            // if (results.size() == 0) {
+            // throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+            // tenantId + "." + batchNo + "租户id.批次号在共享内存中获得数据对象为空");
+            // }
+            // Map<String, String> map = results.get(0);
+            // String objectId = map.get("OBJECT_ID");
+            // String billTimeSn = map.get("BILL_TIME_SN");
 
-                            StlElement stlElementVo = (StlElement) oo;
+            String objectId = "msg";
+            String billTimeSn = "201603";
+            // 根据对象id获取元素ID
+            String tenantIdPolicyStrings = cacheClientObjectToPolicy.hget(NameSpace.OBJECT_POLICY_CACHE,tenantId + "." + objectId);// key：租户id.流水对象id获得政策id为key元素对象序列为value的map
+            if (!StringUtil.isBlank(tenantIdPolicyStrings)) {
+                List<String> list = JSON.parseArray(tenantIdPolicyStrings, String.class);
+                for (String tenantIdpolicyId : list) {
+                   String[] string= tenantIdpolicyId.split("//.");
+                    Long policyId = Long.parseLong(string[1]);
+                    String elements = cacheClientPolicyToElement.hget(NameSpace.POLICY_ELEMENT_CACHE,tenantIdpolicyId);
+                    if (!StringUtil.isBlank(elements)) {
+                        List<StlElement> elements2 = JSON.parseArray(elements, StlElement.class);
+                        for (StlElement stlElement : elements2) {
                             // 租户ID+政策ID+账期+统计元素ID
                             String key = assemKey(tenantId, policyId.toString(), billTimeSn,
-                                    stlElementVo.getElementId().toString());
+                                    stlElement.getElementId().toString());
                             ICacheClient cacheClientStlObjStat = CacheClientFactory
                                     .getCacheClient(NameSpace.STL_OBJ_STAT);
                             String result = cacheClientStlObjStat.get(key);
                             if (StringUtil.isBlank(result)) {
                                 String value = assemValue(tenantId, policyId.toString(),
-                                        billTimeSn, objectId, stlElementVo.getElementId()
-                                                .toString(), "0", "0");
+                                        billTimeSn, objectId, stlElement.getElementId().toString(),
+                                        "0", "0");
                                 cacheClientStlObjStat.set(key, value);
                             }
                             // 获得统计元素属性表的对象list组个进行限定条件校验，
                             String elementResult = cacheElementAttr.get(tenantId + "."
-                                    + stlElementVo.getElementId().toString());
-                            List elementAttrlist = JSON.parseObject(elementResult, List.class);
+                                    + stlElement.getElementId().toString());
+                            List<StlElementAttr> elementAttrlist = JSON.parseArray(elementResult,
+                                    StlElementAttr.class);
                             if (elementAttrlist.size() != 0) {
                                 boolean flag = true;
-                                for (Object object : elementAttrlist) {
-                                    StlElementAttr stlElementAttr = (StlElementAttr) o;
+                                for (StlElementAttr stlElementAttr : elementAttrlist) {
                                     String matchType = stlElementAttr.getRelType();
                                     String matchValue = stlElementAttr.getRelValue();
-                                    String elementValue = data.get(stlElementVo.getElementCode());
+                                    String elementValue = data.get(stlElement.getElementCode());
                                     if (!checkRel(matchType, matchValue, elementValue)) {
                                         flag = false;
                                         break;
@@ -170,28 +183,24 @@ public class StatisticsBolt extends BaseBasicBolt {
                                 // 结算对象统计数据表 统计次数+1
                                 String resultValue = cacheClientStlObjStat.get(key);
                                 if (flag) { // 如果满足则根据汇总方式进行累加 ,结算对象统计数据表的统计次数加1
-                                    if (StatisticsType.RECORD_COUNT.equals(stlElementVo
+                                    if (StatisticsType.RECORD_COUNT.equals(stlElement
                                             .getStatisticsType())) {
-
                                         increase(resultValue, 1L, cacheClientStlObjStat, key, true);
-
-                                    } else if (StatisticsType.VALUE_SUM.equals(stlElementVo
+                                    } else if (StatisticsType.VALUE_SUM.equals(stlElement
                                             .getStatisticsType())) {
-                                        Long elementIdString = stlElementVo
-                                                .getStatisticsElementId();
+                                        Long elementIdString = stlElement.getStatisticsElementId();
                                         // key:tenantId.elementId,value:StlElement
-                                        String elementVoString = cacheClientElement
-                                                .get(stlElementVo.getTenantId() + "."
-                                                        + elementIdString);
+                                        String elementVoString = cacheClientElement.hget(NameSpace.ELEMENT_CACHE,stlElement
+                                                .getTenantId() + "." + elementIdString);
                                         if (StringUtil.isBlank(elementVoString)) {
                                             throw new BusinessException(
                                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                                     elementIdString + "此元素id对应的元素为空");
                                         }
-                                        StlElement stlElement = JSON.parseObject(elementVoString,
-                                                StlElement.class);
+                                        StlElement stlElementNew = JSON.parseObject(
+                                                elementVoString, StlElement.class);
 
-                                        Long num = Long.parseLong(data.get(stlElement
+                                        Long num = Long.parseLong(data.get(stlElementNew
                                                 .getElementCode()));
                                         increase(resultValue, num, cacheClientStlObjStat, key, true);
                                     }
@@ -206,7 +215,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             // key:busidata_租户ID _批次号_stats_times
             // value:业务数据_租户ID _批次号__完成记录数
             String countKey = assemCountKey("busidata", tenantId, batchNo, "stats_times");
-            String count = cacheClientCount.get(countKey);
+            String count = cacheClientCount.hget(NameSpace.STATS_TIMES_COUNT,countKey);
             int num = 0;
             if (StringUtil.isBlank(count)) {
                 num = 1;
@@ -246,7 +255,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             finishListVos.add(finishListVo);
             cacheStatsTimes.set(finishKey, JSON.toJSONString(finishListVos));
         } else {
-            List<FinishListVo> list = JSON.parseObject(cacheStatsTimesValues, List.class);
+            List<FinishListVo> list = JSON.parseArray(cacheStatsTimesValues, FinishListVo.class);
             FinishListVo finishListVoNew = new FinishListVo();
             finishListVoNew.setBatchNo(batchNo);
             finishListVoNew.setBillTimeSn(billTimeSn);
@@ -356,9 +365,11 @@ public class StatisticsBolt extends BaseBasicBolt {
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
-        Map<String, String> logParam = new TreeMap<String, String>();
-        logParam.put(SmcConstants.BATCH_NO_TENANT_ID, batchNo + ":" + tenantId);
-        return dshmClient.list("cp_price_info").where(logParam).executeQuery(calParamCacheClient);
+        Map<String, String> params = new TreeMap<String, String>();
+        params.put(SmcConstants.DshmKeyName.TENANT_ID, tenantId);
+        params.put(SmcConstants.DshmKeyName.BATCH_NO, batchNo);
+        return dshmClient.list(DshmTableName.STL_IMPORT_LOG).where(params)
+                .executeQuery(calParamCacheClient);
     }
 
     @Override

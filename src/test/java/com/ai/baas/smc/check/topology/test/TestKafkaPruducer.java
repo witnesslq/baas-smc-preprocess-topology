@@ -69,10 +69,11 @@ public class TestKafkaPruducer {
                 // state
                 // fee_item_id
                 // total_fee
+                String string = "MVNE\u0001msg\u0001msg\u000120160301001\u0001JSMVNE2016030100123hx\u000120160421162542\u0001201604\u0001JSMVNE20160301001\u0001100\u000123\u0001hx\u0001bw\u00011709123478\u000120160323\u0001\"\"\"testcontent\"\"\u0001\"\"testcontent\"\"\u0001\"\"testcontent\"\"\"\u00011";
                 mappingRules[0] = MappingRule.getMappingRule(MappingRule.FORMAT_TYPE_OUTPUT,
                         BaseConstants.JDBC_DEFAULT);
                 mappingRules[1] = mappingRules[0];
-                MessageParser messageParser = MessageParser.parseObject(sLine, mappingRules,
+                MessageParser messageParser = MessageParser.parseObject(string, mappingRules,
                         outputFields);
 
                 Map<String, String> data = messageParser.getData();
@@ -88,11 +89,12 @@ public class TestKafkaPruducer {
                 String feeItemId = data.get("fee_item_id");
                 String totalFee = data.get("total_fee");
                 // 租户0x01业务0x01来源0x01批次号0x01SN0x01账期0x01到达时间0x01
-//                 + batchNo + totalRecord + msgId + endUser + chnnelId + telNo
-//                 + sendTime + content + state + feeItemId + totalFee
+                // + batchNo + totalRecord + msgId + endUser + chnnelId + telNo
+                // + sendTime + content + state + feeItemId + totalFee
                 String message = "MVNE" + "MSG" + "MSG" + "JSMVNE" + batchNo + "sn" + "201603"
                         + "201603" + batchNo + totalRecord + msgId + endUser + chnnelId + telNo
-                        + sendTime + content + state + feeItemId + totalFee+ FIELD_SPLIT + assembleMessage(sLine);
+                        + sendTime + content + state + feeItemId + totalFee + FIELD_SPLIT
+                        + assembleMessage(sLine);
                 LOG.info("message----" + message);
                 ProducerProxy.getInstance().sendMessage(message);
             }
