@@ -128,8 +128,6 @@ public class CheckBolt extends BaseBasicBolt {
             messageParser = MessageParser.parseObject(inputData, mappingRules, outputFields);
 
             Map<String, String> data = messageParser.getData();
-            // String line = input.getStringByField(BaseConstants.RECORD_DATA);
-            // logger.info("-------------------line==" + line);
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
             String orderId = data.get(SmcConstants.ORDER_ID);
@@ -155,53 +153,53 @@ public class CheckBolt extends BaseBasicBolt {
             }
             List<StlElement> list = JSON.parseArray(elementStrings, StlElement.class);
 
-            for (StlElement stlElement : list) {
-                if (stlElement.getAttrType().equals("normal")) {
-                    String element = data.get(stlElement.getElementCode());
-                    Boolean NecessaryResult = checkIsNecessary(element, stlElement);
-                    if (!NecessaryResult) {
-                        // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
-                        assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime,
-                                "失败", "必填元素为空");
-                        increaseRedise(false, tenantId, batchNo);
-                        FailBillHandler.addFailBillMsg(data, SmcConstants.BILL_DETAIL_CHECK_BOLT,
-                                SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
-                        throw new BusinessException(
-                                ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                stlElement.getElementCode() + "校验失败，此elementcode为必填");
-                    } else {
-                        // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-                        // Boolean ValueTypeResult = checkValueType(element, stlElement);
-                        Boolean ValueTypeResult = true;
-                        if (!ValueTypeResult) {
-                            assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
-                                    applyTime, "失败", "必填元素为空");
-                            increaseRedise(false, tenantId, batchNo);
-                            FailBillHandler.addFailBillMsg(data,
-                                    SmcConstants.BILL_DETAIL_CHECK_BOLT,
-                                    SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
-                            throw new BusinessException(
-                                    ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                    stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
-                        } else {
-                            Boolean IsPKResult = checkIsPK(tenantId, batchNo, objectId, orderId,
-                                    applyTime);
-                            // if (!IsPKResult) {
-                            // assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
-                            // applyTime, "失败", "是否主键与设定不符");
-                            // increaseRedise(successRecordcacheClient, failedRecordcacheClient,
-                            // false, tenantId, batchNo);
-                            // FailBillHandler.addFailBillMsg(data,
-                            // SmcConstants.BILL_DETAIL_CHECK_BOLT,
-                            // SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
-                            // throw new BusinessException(
-                            // ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                            // stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
-                            // }
-                        }
-                    }
-                }
-            }
+//            for (StlElement stlElement : list) {
+//                if (stlElement.getAttrType().equals("normal")) {
+//                    String element = data.get(stlElement.getElementCode());
+//                    Boolean NecessaryResult = checkIsNecessary(element, stlElement);
+//                    if (!NecessaryResult) {
+//                        // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
+//                        assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime,
+//                                "失败", "必填元素为空");
+//                        increaseRedise(false, tenantId, batchNo);
+//                        FailBillHandler.addFailBillMsg(data, SmcConstants.BILL_DETAIL_CHECK_BOLT,
+//                                SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
+//                        throw new BusinessException(
+//                                ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+//                                stlElement.getElementCode() + "校验失败，此elementcode为必填");
+//                    } else {
+//                        // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                        // Boolean ValueTypeResult = checkValueType(element, stlElement);
+//                        Boolean ValueTypeResult = true;
+//                        if (!ValueTypeResult) {
+//                            assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
+//                                    applyTime, "失败", "必填元素为空");
+//                            increaseRedise(false, tenantId, batchNo);
+//                            FailBillHandler.addFailBillMsg(data,
+//                                    SmcConstants.BILL_DETAIL_CHECK_BOLT,
+//                                    SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
+//                            throw new BusinessException(
+//                                    ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+//                                    stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
+//                        } else {
+//                            Boolean IsPKResult = checkIsPK(tenantId, batchNo, objectId, orderId,
+//                                    applyTime);
+//                            // if (!IsPKResult) {
+//                            // assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
+//                            // applyTime, "失败", "是否主键与设定不符");
+//                            // increaseRedise(successRecordcacheClient, failedRecordcacheClient,
+//                            // false, tenantId, batchNo);
+//                            // FailBillHandler.addFailBillMsg(data,
+//                            // SmcConstants.BILL_DETAIL_CHECK_BOLT,
+//                            // SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
+//                            // throw new BusinessException(
+//                            // ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+//                            // stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
+//                            // }
+//                        }
+//                    }
+//                }
+//            }
             assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime, "成功", "校验通过");
             increaseRedise(true, tenantId, batchNo);
             collector.emit(new Values(inputData));
@@ -220,27 +218,30 @@ public class CheckBolt extends BaseBasicBolt {
             successBuilder.append(batchNo);
             successBuilder.append("_");
             successBuilder.append("verify_success");
-            String successValue = successRecordcacheClient.hget(NameSpace.SUCCESS_RECORD,
-                    successBuilder.toString());
+            // successRecordcacheClient.incr(successBuilder.toString());
 
-            if (StringUtil.isBlank(successValue)) {
-                StringBuilder successValueFirst = new StringBuilder();// 业务数据_租户ID _批次号_校验通过记录数
-                successValueFirst.append("业务数据");
-                successValueFirst.append("_");
-                successValueFirst.append(tenantId);
-                successValueFirst.append("_");
-                successValueFirst.append(batchNo);
-                successValueFirst.append("_");
-                successValueFirst.append("1");
-                successRecordcacheClient.hset(NameSpace.SUCCESS_RECORD, successBuilder.toString(),
-                        successValueFirst.toString());
-                System.out.println("成功key值为：" + successBuilder.toString() + "value值为："
-                        + successValueFirst.toString());
-            } else {
-                String num = successValue.split("_")[3];
-                // @@@@@@@@@@@@@@@@@@@@@@@@@@@@需要问@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-                successRecordcacheClient.incr(successBuilder.toString());
-            }
+            countCacheClient.incr(successBuilder.toString());
+            // String successValue = successRecordcacheClient.hget(NameSpace.SUCCESS_RECORD,
+            // successBuilder.toString());
+
+            // if (StringUtil.isBlank(successValue)) {
+            // StringBuilder successValueFirst = new StringBuilder();// 业务数据_租户ID _批次号_校验通过记录数
+            // successValueFirst.append("业务数据");
+            // successValueFirst.append("_");
+            // successValueFirst.append(tenantId);
+            // successValueFirst.append("_");
+            // successValueFirst.append(batchNo);
+            // successValueFirst.append("_");
+            // successValueFirst.append("1");
+            // successRecordcacheClient.hset(NameSpace.SUCCESS_RECORD, successBuilder.toString(),
+            // successValueFirst.toString());
+            // System.out.println("成功key值为：" + successBuilder.toString() + "value值为："
+            // + successValueFirst.toString());
+            // } else {
+            // String num = successValue.split("_")[3];
+            // // @@@@@@@@@@@@@@@@@@@@@@@@@@@@需要问@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+            // successRecordcacheClient.incr(successBuilder.toString());
+            // }
             // 成功记录数加1
         } else {
 
@@ -252,32 +253,33 @@ public class CheckBolt extends BaseBasicBolt {
             failedBuilder.append(batchNo);
             failedBuilder.append("_");
             failedBuilder.append("verify_failure");
-            String failedValue = failedRecordcacheClient.hget(NameSpace.FAILED_RECORD,
-                    failedBuilder.toString());
+            // failedRecordcacheClient.incr(failedBuilder.toString());
+            //countCacheClient.incr(failedBuilder.toString());
+            // String failedValue = failedRecordcacheClient.hget(NameSpace.FAILED_RECORD,
+            // failedBuilder.toString());
 
-            if (StringUtil.isBlank(failedValue)) {
-                StringBuilder failedValueValueFirst = new StringBuilder();// 业务数据_租户ID _批次号_校验通过记录数
-                failedValueValueFirst.append("业务数据");
-                failedValueValueFirst.append("_");
-                failedValueValueFirst.append(tenantId);
-                failedValueValueFirst.append("_");
-                failedValueValueFirst.append(batchNo);
-                failedValueValueFirst.append("_");
-                failedValueValueFirst.append("1");
-                failedRecordcacheClient.hset(NameSpace.FAILED_RECORD, failedBuilder.toString(),
-                        failedValueValueFirst.toString());
-                System.out.println("失败key值为：" + failedBuilder.toString() + "value值为："
-                        + failedValueValueFirst.toString());
-            } else {
-                String num = failedValue.split("_")[3];
-                // Long numLong = countCacheClient.incr(num.getBytes());
-                Long numLong = 10l;
-                failedValue.replace(num, Long.toString(numLong));
-                successRecordcacheClient.hset(NameSpace.SUCCESS_RECORD, failedBuilder.toString(),
-                        failedValue);
-                System.out
-                        .println("失败key值为：" + failedBuilder.toString() + "value值为：" + failedValue);
-            }
+            // if (StringUtil.isBlank(failedValue)) {
+            // StringBuilder failedValueValueFirst = new StringBuilder();// 业务数据_租户ID _批次号_校验通过记录数
+            // failedValueValueFirst.append("业务数据");
+            // failedValueValueFirst.append("_");
+            // failedValueValueFirst.append(tenantId);
+            // failedValueValueFirst.append("_");
+            // failedValueValueFirst.append(batchNo);
+            // failedValueValueFirst.append("_");
+            // failedValueValueFirst.append("1");
+            // failedRecordcacheClient.hset(NameSpace.FAILED_RECORD, failedBuilder.toString(),
+            // failedValueValueFirst.toString());
+            // System.out.println("失败key值为：" + failedBuilder.toString() + "value值为："
+            // + failedValueValueFirst.toString());
+            // } else {
+            // String num = failedValue.split("_")[3];
+            // // Long numLong = countCacheClient.incr(num.getBytes());
+            // Long numLong = 10l;
+            // failedValue.replace(num, Long.toString(numLong));
+            // successRecordcacheClient.hset(NameSpace.SUCCESS_RECORD, failedBuilder.toString(),
+            // failedValue);
+            // System.out.println("失败key值为：" + failedBuilder.toString() + "value值为：" + failedValue);
+            // }
             // 失败记录数加1
         }
     }
@@ -401,7 +403,7 @@ public class CheckBolt extends BaseBasicBolt {
             Float.parseFloat(element);
         } else if (type.DATETIME.equals(valueType)) {
             try {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddhhmiss");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddhhmmss");
                 Date date = new Date();
                 date = sdf.parse(element); // Mon Jan 14 00:00:00 CST 2013
 

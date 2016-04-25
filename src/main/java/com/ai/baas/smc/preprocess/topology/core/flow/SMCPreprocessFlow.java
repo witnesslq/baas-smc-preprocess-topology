@@ -20,14 +20,12 @@ public class SMCPreprocessFlow extends BaseFlow {
     private static Logger logger = LoggerFactory.getLogger(SMCPreprocessFlow.class);
 
     @Override
-    @SuppressWarnings("unchecked")
     public void define() {
         super.setKafkaSpout();
-        // builder.setSpout("TestSpout", new TestSpout(),1);
         builder.setBolt(SmcConstants.CHECK_BOLT, new CheckBolt(), 1).shuffleGrouping(
                 BaseConstants.KAFKA_SPOUT_NAME);
         builder.setBolt(SmcConstants.STATISTICS_BOLT, new StatisticsBolt(), 1).shuffleGrouping(
-                BaseConstants.KAFKA_SPOUT_NAME);
+                SmcConstants.CHECK_BOLT);
     }
 
     public static void main(String[] args) {

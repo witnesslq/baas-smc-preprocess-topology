@@ -67,6 +67,8 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     private IDshmClient dshmClient;
 
+    private ICacheClient cacheClientStlObjStat;
+
     // public StatisticsBolt(String aOutputFields) {
     // outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
     // }
@@ -105,6 +107,10 @@ public class StatisticsBolt extends BaseBasicBolt {
         if (calParamCacheClient == null) {
             calParamCacheClient = CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         }
+        if (cacheClientStlObjStat == null) {
+            cacheClientStlObjStat = CacheFactoryUtil.getCacheClient(NameSpace.STL_OBJ_STAT);
+        }
+
         /* 初始化hbase */
         HBaseProxy.loadResource(stormConf);
         /* 2.获取报文格式信息 */
@@ -125,8 +131,6 @@ public class StatisticsBolt extends BaseBasicBolt {
             MessageParser messageParser = MessageParser.parseObject(inputData, mappingRules,
                     outputFields);
             Map<String, String> data = messageParser.getData();
-            // String line = input.getStringByField(BaseConstants.RECORD_DATA);
-            // logger.info("-------------------line==" + line);
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
             int totalRecord = Integer.parseInt(data.get(SmcConstants.TOTAL_RECORD));
@@ -142,21 +146,21 @@ public class StatisticsBolt extends BaseBasicBolt {
             String objectId = "msg";
             String billTimeSn = "201603";
             // 根据对象id获取元素ID
-            String tenantIdPolicyStrings = cacheClientObjectToPolicy.hget(NameSpace.OBJECT_POLICY_CACHE,tenantId + "." + objectId);// key：租户id.流水对象id获得政策id为key元素对象序列为value的map
+            String tenantIdPolicyStrings = cacheClientObjectToPolicy.hget(
+                    NameSpace.OBJECT_POLICY_CACHE, tenantId + "." + objectId);// key：租户id.流水对象id获得政策id为key元素对象序列为value的map
             if (!StringUtil.isBlank(tenantIdPolicyStrings)) {
                 List<String> list = JSON.parseArray(tenantIdPolicyStrings, String.class);
                 for (String tenantIdpolicyId : list) {
-                   String[] string= tenantIdpolicyId.split("//.");
+                    String[] string = tenantIdpolicyId.split("//.");
                     Long policyId = Long.parseLong(string[1]);
-                    String elements = cacheClientPolicyToElement.hget(NameSpace.POLICY_ELEMENT_CACHE,tenantIdpolicyId);
+                    String elements = cacheClientPolicyToElement.hget(
+                            NameSpace.POLICY_ELEMENT_CACHE, tenantIdpolicyId);
                     if (!StringUtil.isBlank(elements)) {
                         List<StlElement> elements2 = JSON.parseArray(elements, StlElement.class);
                         for (StlElement stlElement : elements2) {
                             // 租户ID+政策ID+账期+统计元素ID
                             String key = assemKey(tenantId, policyId.toString(), billTimeSn,
                                     stlElement.getElementId().toString());
-                            ICacheClient cacheClientStlObjStat = CacheClientFactory
-                                    .getCacheClient(NameSpace.STL_OBJ_STAT);
                             String result = cacheClientStlObjStat.get(key);
                             if (StringUtil.isBlank(result)) {
                                 String value = assemValue(tenantId, policyId.toString(),
@@ -185,13 +189,14 @@ public class StatisticsBolt extends BaseBasicBolt {
                                 if (flag) { // 如果满足则根据汇总方式进行累加 ,结算对象统计数据表的统计次数加1
                                     if (StatisticsType.RECORD_COUNT.equals(stlElement
                                             .getStatisticsType())) {
-                                        increase(resultValue, 1L, cacheClientStlObjStat, key, true);
+                                        increase(resultValue, 1L, key, true);
                                     } else if (StatisticsType.VALUE_SUM.equals(stlElement
                                             .getStatisticsType())) {
                                         Long elementIdString = stlElement.getStatisticsElementId();
                                         // key:tenantId.elementId,value:StlElement
-                                        String elementVoString = cacheClientElement.hget(NameSpace.ELEMENT_CACHE,stlElement
-                                                .getTenantId() + "." + elementIdString);
+                                        String elementVoString = cacheClientElement.hget(
+                                                NameSpace.ELEMENT_CACHE, stlElement.getTenantId()
+                                                        + "." + elementIdString);
                                         if (StringUtil.isBlank(elementVoString)) {
                                             throw new BusinessException(
                                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
@@ -202,10 +207,10 @@ public class StatisticsBolt extends BaseBasicBolt {
 
                                         Long num = Long.parseLong(data.get(stlElementNew
                                                 .getElementCode()));
-                                        increase(resultValue, num, cacheClientStlObjStat, key, true);
+                                        increase(resultValue, num, key, true);
                                     }
                                 } else {// 如果不满足则结算对象统计数据表的 统计次数加1
-                                    increase(resultValue, 1L, cacheClientStlObjStat, key, false);
+                                    increase(resultValue, 1L, key, false);
                                 }
                             }
                         }
@@ -215,7 +220,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             // key:busidata_租户ID _批次号_stats_times
             // value:业务数据_租户ID _批次号__完成记录数
             String countKey = assemCountKey("busidata", tenantId, batchNo, "stats_times");
-            String count = cacheClientCount.hget(NameSpace.STATS_TIMES_COUNT,countKey);
+            String count = cacheClientCount.hget(NameSpace.STATS_TIMES_COUNT, countKey);
             int num = 0;
             if (StringUtil.isBlank(count)) {
                 num = 1;
@@ -282,12 +287,11 @@ public class StatisticsBolt extends BaseBasicBolt {
     }
 
     //
-    private void increase(String resultRecord, Long num, ICacheClient cacheClientStlObjStat,
-            String key, boolean b) {
+    private void increase(String resultRecord, float num, String key, boolean b) {
         String[] result = resultRecord.split("_");
         String statisticsVal = result[6];
-        String times = result[7];
-        Long timesNew = Long.parseLong(times) + 1l;
+        Float times = Float.parseFloat(result[7]);
+        Float timesNew = times + 1F;
         StringBuilder resultNew = new StringBuilder();
         resultNew.append(result[0]);
         resultNew.append("_");
@@ -302,8 +306,7 @@ public class StatisticsBolt extends BaseBasicBolt {
         resultNew.append(result[5]);
         resultNew.append("_");
         if (b) {
-            Long statisticsValNew = countCacheClient.incrBy(statisticsVal.getBytes(), num);
-            resultNew.append(statisticsValNew.toString());
+            resultNew.append(String.valueOf(Float.parseFloat(statisticsVal) + num));
         } else {
             resultNew.append((result[6]));
         }
