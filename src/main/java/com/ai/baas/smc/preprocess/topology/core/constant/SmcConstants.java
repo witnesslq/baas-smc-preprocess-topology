@@ -65,6 +65,20 @@ public final class SmcConstants {
 
             public static final String NO = "0";
         }
+        
+        /**
+         * 是否主键<br>
+         * 1：是 0：否<br>
+         * Date: 2016年3月17日 <br>
+         * Copyright (c) 2016 asiainfo.com <br>
+         * 
+         * @author wangjl9
+         */
+        public static class IsPrimaryKey{
+            public static final String YES = "1";
+
+            public static final String NO = "0";
+        }
 
         public static class StatisticsType {
             /**
@@ -208,6 +222,8 @@ public final class SmcConstants {
         public static final String STATS_TIMES = "stats_times";
 
         public static final String STATS_TIMES_COUNT = "stats_times_count";
+        
+        public static final String STL_ELEMENT_ATTR_CACHE = "com.ai.baas.smc.cache.StlElementAttrCache";
 
         /**
          * redis计数

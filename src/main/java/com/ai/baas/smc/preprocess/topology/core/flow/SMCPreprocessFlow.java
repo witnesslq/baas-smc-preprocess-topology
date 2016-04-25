@@ -22,6 +22,7 @@ public class SMCPreprocessFlow extends BaseFlow {
     @Override
     public void define() {
         super.setKafkaSpout();
+
         builder.setBolt(SmcConstants.CHECK_BOLT, new CheckBolt(), 1).shuffleGrouping(
                 BaseConstants.KAFKA_SPOUT_NAME);
         builder.setBolt(SmcConstants.STATISTICS_BOLT, new StatisticsBolt(), 1).shuffleGrouping(

@@ -9,7 +9,7 @@ public class StlElementAttr {
 
     private Long elementId;
 
-    private Long subObjectId;
+    private String subObjectId;
 
     private Long subElementId;
 
@@ -47,12 +47,12 @@ public class StlElementAttr {
         this.elementId = elementId;
     }
 
-    public Long getSubObjectId() {
+    public String getSubObjectId() {
         return subObjectId;
     }
 
-    public void setSubObjectId(Long subObjectId) {
-        this.subObjectId = subObjectId;
+    public void setSubObjectId(String subObjectId) {
+        this.subObjectId = subObjectId == null ? null : subObjectId.trim();
     }
 
     public Long getSubElementId() {

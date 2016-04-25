@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
@@ -35,6 +34,7 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsNecessary;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsPrimaryKey;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcExceptCodeConstant;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcHbaseConstants;
@@ -51,6 +51,7 @@ import com.ai.opt.sdk.cache.factory.CacheClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
 import com.ai.paas.ipaas.mcs.interfaces.ICacheClient;
+import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.fastjson.JSON;
 
 public class CheckBolt extends BaseBasicBolt {
@@ -181,8 +182,8 @@ public class CheckBolt extends BaseBasicBolt {
                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                     stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
                         } else {
-                            Boolean IsPKResult = checkIsPK(tenantId, batchNo, objectId, orderId,
-                                    applyTime);
+                            Boolean IsPKResult = checkIsPK(stlElement, tenantId, batchNo, objectId,
+                                    orderId, applyTime);
                             if (!IsPKResult) {
                                 assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
                                         applyTime, "失败", "是否主键与设定不符");
@@ -200,7 +201,7 @@ public class CheckBolt extends BaseBasicBolt {
             }
             assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime, "成功", "校验通过");
             increaseRedise(true, tenantId, batchNo);
-            collector.emit(new Values(inputData));
+            collector.emit(new Values(input));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -291,28 +292,33 @@ public class CheckBolt extends BaseBasicBolt {
         tableStlOrderData.put(put);
     }
 
-    private Boolean checkIsPK(String tenantId, String batchNo, String objectId, String orderId,
-            String applyTime) throws IOException {
-        StringBuilder stlOrderDatakey = new StringBuilder();
-        stlOrderDatakey.append(tenantId);
-        stlOrderDatakey.append("_");
-        stlOrderDatakey.append(batchNo);
-        stlOrderDatakey.append("_");
-        stlOrderDatakey.append(objectId);
-        stlOrderDatakey.append("_");
-        stlOrderDatakey.append(orderId);
-        stlOrderDatakey.append("_");
-        stlOrderDatakey.append(applyTime);
-        String tableName = "stl_order_data_" + applyTime.substring(0, 6);
-        Table tables = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
-        Get get = new Get(stlOrderDatakey.toString().getBytes());
-        Result result = tables.get(get);
-        if (result.isEmpty()) {
-            return true;
+    private Boolean checkIsPK(StlElement stlElement, String tenantId, String batchNo,
+            String objectId, String orderId, String applyTime) throws IOException {
+        boolean boolresult = true;
+        int a = 0;
+        if (stlElement.getIsPrimaryKey().equals(IsPrimaryKey.YES)) {
+            StringBuilder stlOrderDatakey = new StringBuilder();
+            stlOrderDatakey.append(tenantId);
+            stlOrderDatakey.append("_");
+            stlOrderDatakey.append(batchNo);
+            stlOrderDatakey.append("_");
+            stlOrderDatakey.append(objectId);
+            stlOrderDatakey.append("_");
+            stlOrderDatakey.append(orderId);
+            stlOrderDatakey.append("_");
+            stlOrderDatakey.append(applyTime);
+            String tableName = "stl_order_data_" + applyTime.substring(0, 6);
+            Table tables = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
+            Get get = new Get(stlOrderDatakey.toString().getBytes());
+            Result result = tables.get(get);
+            if (result.isEmpty()) {
+                boolresult = true;
 
-        } else {
-            return false;
+            } else {
+                boolresult = false;
+            }
         }
+        return boolresult;
     }
 
     private Boolean checkValueType(String element, StlElement stlElement) throws Exception {

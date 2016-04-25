@@ -90,7 +90,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             cacheClientCount = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES_COUNT);
         }
         if (cacheElementAttr == null) {
-            cacheElementAttr = CacheClientFactory.getCacheClient(NameSpace.STL_OBJ_STAT);
+            cacheElementAttr = CacheClientFactory.getCacheClient(NameSpace.STL_ELEMENT_ATTR_CACHE);
         }
         if (cacheStatsTimes == null) {
             cacheStatsTimes = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
@@ -139,16 +139,17 @@ public class StatisticsBolt extends BaseBasicBolt {
             Map<String, String> map = results.get(0);
             String objectId = map.get("OBJECT_ID");
             String billTimeSn = map.get("BILL_TIME_SN");
-            // String objectId = "msg";
+            // String objectId = "MSG";
             // String billTimeSn = "201603";
             // 根据对象id获取元素ID
             String tenantIdPolicyStrings = cacheClientObjectToPolicy.hget(
-                    NameSpace.OBJECT_POLICY_CACHE, tenantId + "." + objectId);// key：租户id.流水对象id获得政策id为key元素对象序列为value的map
+                    NameSpace.OBJECT_POLICY_CACHE, tenantId + "_" + objectId);// key：租户id.流水对象id获得政策id为key元素对象序列为value的map
             if (!StringUtil.isBlank(tenantIdPolicyStrings)) {
                 List<String> list = JSON.parseArray(tenantIdPolicyStrings, String.class);
                 for (String tenantIdpolicyId : list) {
-                    String[] string = tenantIdpolicyId.split("//.");
-                    Long policyId = Long.parseLong(string[1]);
+                    String[] string = tenantIdpolicyId.split("_");
+                    String policyIdString = string[1];
+                    Long policyId = Long.parseLong(policyIdString);
                     String elements = cacheClientPolicyToElement.hget(
                             NameSpace.POLICY_ELEMENT_CACHE, tenantIdpolicyId);
                     if (!StringUtil.isBlank(elements)) {
@@ -165,16 +166,34 @@ public class StatisticsBolt extends BaseBasicBolt {
                                 cacheClientStlObjStat.set(key, value);
                             }
                             // 获得统计元素属性表的对象list组个进行限定条件校验，
-                            String elementResult = cacheElementAttr.get(tenantId + "."
-                                    + stlElement.getElementId().toString());
-                            List<StlElementAttr> elementAttrlist = JSON.parseArray(elementResult,
-                                    StlElementAttr.class);
-                            if (elementAttrlist.size() != 0) {
+                            String elementResult = cacheElementAttr.hget(
+                                    NameSpace.STL_ELEMENT_ATTR_CACHE, tenantId + "."
+                                            + stlElement.getElementId().toString());
+                            if (!StringUtil.isBlank(elementResult)) {
+                                List<StlElementAttr> elementAttrlist = JSON.parseArray(
+                                        elementResult, StlElementAttr.class);
                                 boolean flag = true;
                                 for (StlElementAttr stlElementAttr : elementAttrlist) {
                                     String matchType = stlElementAttr.getRelType();
                                     String matchValue = stlElementAttr.getRelValue();
                                     String elementValue = data.get(stlElement.getElementCode());
+                                    // String elementValue = "12";
+                                    if (StringUtil.isBlank(matchType)) {
+                                        throw new BusinessException(
+                                                ExceptCodeConstants.Special.SYSTEM_ERROR,
+                                                stlElementAttr.getAttrId() + "此AttrId对应的RelType为空");
+                                    }
+                                    if (StringUtil.isBlank(matchValue)) {
+                                        throw new BusinessException(
+                                                ExceptCodeConstants.Special.SYSTEM_ERROR,
+                                                stlElementAttr.getAttrId() + "此AttrId对应的RelValue为空");
+                                    }
+                                    if (StringUtil.isBlank(elementValue)) {
+                                        throw new BusinessException(
+                                                ExceptCodeConstants.Special.SYSTEM_ERROR,
+                                                stlElement.getElementCode()
+                                                        + "此elementCode对应的lementValue为空");
+                                    }
                                     if (!checkRel(matchType, matchValue, elementValue)) {
                                         flag = false;
                                         break;
@@ -285,7 +304,7 @@ public class StatisticsBolt extends BaseBasicBolt {
     private void increase(String resultRecord, float num, String key, boolean b) {
         String[] result = resultRecord.split("_");
         String statisticsVal = result[6];
-        Float times = Float.parseFloat(result[7]);
+        Float times = Float.parseFloat(result[6]);
         Float timesNew = times + 1F;
         StringBuilder resultNew = new StringBuilder();
         resultNew.append(result[0]);
@@ -298,19 +317,18 @@ public class StatisticsBolt extends BaseBasicBolt {
         resultNew.append("_");
         resultNew.append(result[4]);
         resultNew.append("_");
-        resultNew.append(result[5]);
-        resultNew.append("_");
         if (b) {
             resultNew.append(String.valueOf(Float.parseFloat(statisticsVal) + num));
         } else {
-            resultNew.append((result[6]));
+            resultNew.append((result[5]));
         }
         resultNew.append("_");
         resultNew.append(timesNew.toString());
         cacheClientStlObjStat.set(key, resultNew.toString());
     }
 
-    private Boolean checkRel(String matchType, String matchValue, String elementValue) {
+    private Boolean checkRel(String matchType, String matchValue, String elementValue)
+            throws BusinessException {
         Boolean flag = false;
         if (matchType.equals("in")) {
             flag = IKin.in(elementValue, matchValue);
@@ -322,6 +340,11 @@ public class StatisticsBolt extends BaseBasicBolt {
             variables.add(Variable.createVariable("a", matchValue));
             variables.add(Variable.createVariable("b", elementValue));
             Object resultss = ExpressionEvaluator.evaluate(expression, variables);
+            if (resultss == null) {
+                throw new BusinessException(ExceptCodeConstants.Special.SYSTEM_ERROR, "a="
+                        + matchValue + "符号=" + matchType + "b=" + elementValue
+                        + "此形式校验格式不正确,正确格式为a、b为数字，符号为大于小于等");
+            }
             flag = Boolean.parseBoolean(resultss.toString());
         }
         return flag;
@@ -344,8 +367,6 @@ public class StatisticsBolt extends BaseBasicBolt {
     private String assemValue(String tenantId, String policyId, String billTimeSn, String objectId,
             String elementId, String statisticsVal, String times) {
         StringBuilder stlObjStatValue = new StringBuilder();
-        stlObjStatValue.append(SmcSeqUtil.createDataId());
-        stlObjStatValue.append("_");
         stlObjStatValue.append(tenantId);
         stlObjStatValue.append("_");
         stlObjStatValue.append(policyId);
