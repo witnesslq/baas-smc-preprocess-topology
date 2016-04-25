@@ -241,7 +241,6 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     private void updateFinishRedis(String tenantId, String objectId, String billTimeSn,
             String batchNo, String totalRecord, ICacheClient cacheStatsTimes) {
-
         String finishKey = "busidata_tenantId_batchNo_billTimeSn_objectId_stats_times";
         String cacheStatsTimesValues = cacheStatsTimes.get(finishKey);
         if (StringUtil.isBlank(cacheStatsTimesValues)) {
