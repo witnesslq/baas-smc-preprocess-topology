@@ -14,6 +14,7 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.BasicOutputCollector;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseBasicBolt;
+import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 
 import com.ai.baas.dshm.client.CacheFactoryUtil;
@@ -68,10 +69,6 @@ public class StatisticsBolt extends BaseBasicBolt {
     private IDshmClient dshmClient;
 
     private ICacheClient cacheClientStlObjStat;
-
-    // public StatisticsBolt(String aOutputFields) {
-    // outputFields = StringUtils.splitPreserveAllTokens(aOutputFields, ",");
-    // }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context) {
@@ -134,17 +131,16 @@ public class StatisticsBolt extends BaseBasicBolt {
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
             int totalRecord = Integer.parseInt(data.get(SmcConstants.TOTAL_RECORD));
-            // List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
-            // if (results.size() == 0) {
-            // throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-            // tenantId + "." + batchNo + "租户id.批次号在共享内存中获得数据对象为空");
-            // }
-            // Map<String, String> map = results.get(0);
-            // String objectId = map.get("OBJECT_ID");
-            // String billTimeSn = map.get("BILL_TIME_SN");
-
-            String objectId = "msg";
-            String billTimeSn = "201603";
+            List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
+            if (results.size() == 0) {
+                throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+                        tenantId + "." + batchNo + "租户id.批次号在共享内存中获得数据对象为空");
+            }
+            Map<String, String> map = results.get(0);
+            String objectId = map.get("OBJECT_ID");
+            String billTimeSn = map.get("BILL_TIME_SN");
+            // String objectId = "msg";
+            // String billTimeSn = "201603";
             // 根据对象id获取元素ID
             String tenantIdPolicyStrings = cacheClientObjectToPolicy.hget(
                     NameSpace.OBJECT_POLICY_CACHE, tenantId + "." + objectId);// key：租户id.流水对象id获得政策id为key元素对象序列为value的map
@@ -378,6 +374,6 @@ public class StatisticsBolt extends BaseBasicBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         // TODO Auto-generated method stub
-
+        declarer.declare(new Fields("DATA"));
     }
 }
