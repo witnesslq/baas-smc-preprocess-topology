@@ -129,7 +129,7 @@ public class StatisticsBolt extends BaseBasicBolt {
                     outputFields);
             Map<String, String> data = messageParser.getData();
             String tenantId = data.get(BaseConstants.TENANT_ID);
-            String batchNo = data.get(SmcConstants.BATCH_NO);
+            String batchNo = data.get(BaseConstants.BATCH_SERIAL_NUMBER);
             int totalRecord = Integer.parseInt(data.get(SmcConstants.TOTAL_RECORD));
             List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
             if (results.size() == 0) {

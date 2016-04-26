@@ -129,7 +129,7 @@ public class CheckBolt extends BaseBasicBolt {
 
             Map<String, String> data = messageParser.getData();
             String tenantId = data.get(BaseConstants.TENANT_ID);
-            String batchNo = data.get(SmcConstants.BATCH_NO);
+            String batchNo = data.get(BaseConstants.BATCH_SERIAL_NUMBER);
             String orderId = data.get(SmcConstants.ORDER_ID);
             String applyTime = data.get(SmcConstants.APPLY_TIME);
             // 数据导入日志表中查询此批次数据的数据对象(redis)
