@@ -338,6 +338,7 @@ public class StatisticsBolt extends BaseBasicBolt {
         }
         resultNew.append("_");
         resultNew.append(timesNew.toString());
+        System.out.println("key值为" + key + "value值为：" + resultNew.toString());
         cacheClientStlObjStat.set(key, resultNew.toString());
     }
 
@@ -348,6 +349,10 @@ public class StatisticsBolt extends BaseBasicBolt {
             flag = IKin.in(elementValue, matchValue);
         } else if (matchType.equals("nin")) {
             flag = !IKin.in(elementValue, matchValue);
+        } else if (matchType.equals("=")) {
+            if (matchValue.equals(elementValue)) {
+                flag = true;
+            }
         } else {
             String expression = "a" + matchType + "b";
             List<Variable> variables = new ArrayList<Variable>();
