@@ -66,7 +66,7 @@ public class BaasClientProducer {
     public static void main(String[] args) {
         // String path =
         // "C:\\Users\\Administrator\\Desktop\\simulator\\simulator\\baas-smc-preprocess.txt";
-        String path = "C:\\Users\\Administrator\\Desktop\\simulator\\simulator\\baas-smc-preprocess-MSG.txt";
+        String path = "C:\\Users\\Administrator\\Desktop\\simulator\\simulator\\test.txt";
 
         BaasClientProducer simulator = new BaasClientProducer();
         simulator.send(path);

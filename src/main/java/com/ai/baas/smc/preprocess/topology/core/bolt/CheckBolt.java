@@ -76,6 +76,8 @@ public class CheckBolt extends BaseBasicBolt {
 
     private IDshmClient dshmClient;
 
+    private ICacheClient sysCacheClient;
+
     private static Configuration conf;
 
     @Override
@@ -100,6 +102,10 @@ public class CheckBolt extends BaseBasicBolt {
         if (calParamCacheClient == null) {
             calParamCacheClient = CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         }
+        if (sysCacheClient == null) {
+            sysCacheClient = CacheFactoryUtil.getCacheClient(NameSpace.SYS_PARAM_CACHE);
+        }
+
         conf = HBaseConfiguration.create();
         conf.set("hbase.zookeeper.quorum", "10.1.130.84,10.1.130.85,10.1.236.122");
         conf.set("hbase.zookeeper.property.clientPort", "49181");
@@ -142,8 +148,11 @@ public class CheckBolt extends BaseBasicBolt {
             Map<String, String> map = results.get(0);
             // String objectId = "msg";
             // String billTimeSn = "201603";
-            String objectId = map.get("OBJECT_ID");
-            String billTimeSn = map.get("BILL_TIME_SN");
+            String objectId = map.get("object_id");
+            String billTimeSn = map.get("bill_time_sn");
+            logger.info("共享内存获得的objectId=" + objectId);
+            logger.info("共享内存获得的billTimeSn=" + billTimeSn);
+
             // 根据对象id获取元素ID
             String elementStrings = cacheClient.hget(NameSpace.OBJECT_ELEMENT_CACHE, tenantId + "."
                     + objectId);// key：租户id.流水对象id获得元素对象想
@@ -152,7 +161,7 @@ public class CheckBolt extends BaseBasicBolt {
                         tenantId + "." + objectId + "租户id.流水对象id获得元素对象为空");
             }
             List<StlElement> list = JSON.parseArray(elementStrings, StlElement.class);
-
+            logger.info(tenantId + "." + objectId + "租户id.流水对象id获得元素对象为：" + list);
             for (StlElement stlElement : list) {
                 if (stlElement.getAttrType().equals("normal")) {
                     String element = data.get(stlElement.getElementCode());
@@ -201,7 +210,7 @@ public class CheckBolt extends BaseBasicBolt {
             }
             assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime, "成功", "校验通过");
             increaseRedise(true, tenantId, batchNo);
-            collector.emit(new Values(input));
+            collector.emit(new Values(inputData));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -229,7 +238,7 @@ public class CheckBolt extends BaseBasicBolt {
             failedBuilder.append(batchNo);
             failedBuilder.append("_");
             failedBuilder.append("verify_failure");
-            failedRecordcacheClient.incr(failedBuilder.toString());
+            countCacheClient.incr(failedBuilder.toString());
             // 失败记录数加1
         }
     }
@@ -324,11 +333,9 @@ public class CheckBolt extends BaseBasicBolt {
     private Boolean checkValueType(String element, StlElement stlElement) throws Exception {
         String valueType = stlElement.getValueType();
         if (type.ENUM.equals(valueType)) {
-            Boolean flag = false;
-            // 系统参数表中获得类型
-            CacheClientFactory.getCacheClient(NameSpace.SYS_PARAM_CACHE);
-            String result = cacheClient.hget(NameSpace.OBJECT_ELEMENT_CACHE,
-                    stlElement.getTenantId() + "STL_ORDER_DATA" + stlElement.getElementCode());
+            Boolean flag = false; // 系统参数表中获得类型
+            String result = sysCacheClient.get(stlElement.getTenantId() + "." + "STL_ORDER_DATA"
+                    + "." + stlElement.getElementCode());
             if (StringUtil.isBlank(result)) {
                 throw new BusinessException(ExceptCodeConstants.Special.PARAM_IS_NULL,
                         stlElement.getTenantId() + stlElement.getElementCode()
@@ -350,21 +357,23 @@ public class CheckBolt extends BaseBasicBolt {
             try {
                 Integer.parseInt(element);
             } catch (Exception e) {
-                e.printStackTrace();
-                return false;
+                throw new BusinessException(e.getMessage(), "int型转换失败");
             }
         } else if (type.FLOAT.equals(valueType)) {
+            try {
+                Float.parseFloat(element);
+            } catch (Exception e) {
+                throw new BusinessException(e.getMessage(), "Float型转换失败");
+            }
 
-            Float.parseFloat(element);
         } else if (type.DATETIME.equals(valueType)) {
             try {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddhhmmss");
+                SimpleDateFormat sdf = new SimpleDateFormat("YYYYMMDD");
                 Date date = new Date();
                 date = sdf.parse(element); // Mon Jan 14 00:00:00 CST 2013
 
             } catch (Exception e) {
-                e.printStackTrace();
-                return false;
+                throw new BusinessException(e.getMessage(), element + "日期yyyyMMddhhmmss型转换失败");
             }
         }
         return true;

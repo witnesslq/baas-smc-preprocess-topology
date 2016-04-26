@@ -26,7 +26,6 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableN
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.StatisticsType;
 import com.ai.baas.smc.preprocess.topology.core.util.IKin;
-import com.ai.baas.smc.preprocess.topology.core.util.SmcSeqUtil;
 import com.ai.baas.smc.preprocess.topology.core.vo.FinishListVo;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElementAttr;
@@ -137,10 +136,8 @@ public class StatisticsBolt extends BaseBasicBolt {
                         tenantId + "." + batchNo + "租户id.批次号在共享内存中获得数据对象为空");
             }
             Map<String, String> map = results.get(0);
-            String objectId = map.get("OBJECT_ID");
-            String billTimeSn = map.get("BILL_TIME_SN");
-            // String objectId = "MSG";
-            // String billTimeSn = "201603";
+            String objectId = map.get("object_id");
+            String billTimeSn = map.get("bill_time_sn");
             // 根据对象id获取元素ID
             String tenantIdPolicyStrings = cacheClientObjectToPolicy.hget(
                     NameSpace.OBJECT_POLICY_CACHE, tenantId + "_" + objectId);// key：租户id.流水对象id获得政策id为key元素对象序列为value的map
@@ -151,24 +148,34 @@ public class StatisticsBolt extends BaseBasicBolt {
                     String policyIdString = string[1];
                     Long policyId = Long.parseLong(policyIdString);
                     String elements = cacheClientPolicyToElement.hget(
-                            NameSpace.POLICY_ELEMENT_CACHE, tenantIdpolicyId);
+                            NameSpace.POLICY_ELEMENT_CACHE, tenantIdpolicyId + "_" + objectId);
+
                     if (!StringUtil.isBlank(elements)) {
                         List<StlElement> elements2 = JSON.parseArray(elements, StlElement.class);
                         for (StlElement stlElement : elements2) {
                             // 租户ID+政策ID+账期+统计元素ID
                             String key = assemKey(tenantId, policyId.toString(), billTimeSn,
                                     stlElement.getElementId().toString());
+
                             String result = cacheClientStlObjStat.get(key);
+
                             if (StringUtil.isBlank(result)) {
                                 String value = assemValue(tenantId, policyId.toString(),
                                         billTimeSn, objectId, stlElement.getElementId().toString(),
                                         "0", "0");
                                 cacheClientStlObjStat.set(key, value);
+                                System.out.println("租户ID+政策ID+账期+统计元素ID key值为：" + key);
+                                System.out.println("租户ID+政策ID+账期+统计元素ID value值为：" + key);
+
                             }
                             // 获得统计元素属性表的对象list组个进行限定条件校验，
-                            String elementResult = cacheElementAttr.hget(
-                                    NameSpace.STL_ELEMENT_ATTR_CACHE, tenantId + "."
-                                            + stlElement.getElementId().toString());
+                            String elementResult = cacheElementAttr
+                                    .hget(NameSpace.STL_ELEMENT_ATTR_CACHE, tenantId + "_"
+                                            + stlElement.getElementId().toString() + "_" + objectId);
+                            System.out.println("取政策表的key为" + tenantIdpolicyId + "_" + objectId);
+                            System.out.println(tenantId + "_"
+                                    + stlElement.getElementId().toString() + "_" + objectId
+                                    + "获得统计元素属性表的对象list值为：" + elementResult);
                             if (!StringUtil.isBlank(elementResult)) {
                                 List<StlElementAttr> elementAttrlist = JSON.parseArray(
                                         elementResult, StlElementAttr.class);
@@ -177,7 +184,6 @@ public class StatisticsBolt extends BaseBasicBolt {
                                     String matchType = stlElementAttr.getRelType();
                                     String matchValue = stlElementAttr.getRelValue();
                                     String elementValue = data.get(stlElement.getElementCode());
-                                    // String elementValue = "12";
                                     if (StringUtil.isBlank(matchType)) {
                                         throw new BusinessException(
                                                 ExceptCodeConstants.Special.SYSTEM_ERROR,
@@ -201,6 +207,7 @@ public class StatisticsBolt extends BaseBasicBolt {
                                 }
                                 // 结算对象统计数据表 统计次数+1
                                 String resultValue = cacheClientStlObjStat.get(key);
+                                System.out.println("结算对象统计数据表 统计次数为：" + resultValue);
                                 if (flag) { // 如果满足则根据汇总方式进行累加 ,结算对象统计数据表的统计次数加1
                                     if (StatisticsType.RECORD_COUNT.equals(stlElement
                                             .getStatisticsType())) {
@@ -235,15 +242,19 @@ public class StatisticsBolt extends BaseBasicBolt {
             // key:busidata_租户ID _批次号_stats_times
             // value:业务数据_租户ID _批次号__完成记录数
             String countKey = assemCountKey("busidata", tenantId, batchNo, "stats_times");
-            String count = cacheClientCount.hget(NameSpace.STATS_TIMES_COUNT, countKey);
-            int num = 0;
-            if (StringUtil.isBlank(count)) {
-                num = 1;
-                cacheClientCount.set(countKey, "1");
-            } else {
-                num = Integer.parseInt(count) + 1;
-                cacheClientCount.set(countKey, Integer.toString(num));
-            }
+            long num = countCacheClient.incr(countKey);
+            System.out.println("@@@@@@@@@@@@@@@@@@@@@@countKey值为：" + countKey);
+            System.out.println("totalRecord值为：" + totalRecord);
+            // String count = cacheClientCount.hget(NameSpace.STATS_TIMES_COUNT, countKey);
+            // int num = 0;
+            // if (StringUtil.isBlank(count)) {
+            // num = 1;
+            // cacheClientCount.set(countKey, "1");
+            // } else {
+            // num = Integer.parseInt(count) + 1;
+            // cacheClientCount.set(countKey, Integer.toString(num));
+            // }
+            System.out.println("统计的数值为：" + num);
             if (num == totalRecord) {// 加入到缓存的完成队列触发计算拓扑 busidata_租户ID _批次号_账期_数据对象_stats_times
 
                 updateFinishRedis(tenantId, objectId, billTimeSn, batchNo,
@@ -273,6 +284,8 @@ public class StatisticsBolt extends BaseBasicBolt {
             finishListVo.setStats_times(totalRecord);
             finishListVos.add(finishListVo);
             cacheStatsTimes.set(finishKey, JSON.toJSONString(finishListVos));
+            System.out.println("num == totalRecord加入到缓存的完成队列触发计算拓扑"
+                    + JSON.toJSONString(finishListVos));
         } else {
             List<FinishListVo> list = JSON.parseArray(cacheStatsTimesValues, FinishListVo.class);
             FinishListVo finishListVoNew = new FinishListVo();
@@ -284,6 +297,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             finishListVoNew.setStats_times(totalRecord);
             list.add(finishListVoNew);
             cacheStatsTimes.set(finishKey, JSON.toJSONString(list));
+            System.out.println("num == totalRecord加入到缓存的完成队列触发计算拓扑" + JSON.toJSONString(list));
         }
     }
 
