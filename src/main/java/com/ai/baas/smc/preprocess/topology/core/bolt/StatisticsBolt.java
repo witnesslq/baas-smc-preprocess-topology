@@ -350,7 +350,7 @@ public class StatisticsBolt extends BaseBasicBolt {
         } else if (matchType.equals("nin")) {
             flag = !IKin.in(elementValue, matchValue);
         } else if (matchType.equals("=")) {
-            if (matchValue.equals(elementValue)) {
+            if ((matchValue.equals(elementValue) || (matchValue == elementValue))) {
                 flag = true;
             }
         } else {
