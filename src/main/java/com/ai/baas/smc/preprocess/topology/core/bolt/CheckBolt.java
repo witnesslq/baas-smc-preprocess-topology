@@ -264,6 +264,10 @@ public class CheckBolt extends BaseBasicBolt {
         stlOrderDatakey.append(orderId);
         stlOrderDatakey.append("_");
         stlOrderDatakey.append(applyTime);
+        stlOrderDatakey.append("_");
+        stlOrderDatakey.append(verifyState);
+        stlOrderDatakey.append("_");
+        stlOrderDatakey.append(verifydesc);
         String tableName = SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm;
         Table tableStlOrderData = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
         @SuppressWarnings("deprecation")
