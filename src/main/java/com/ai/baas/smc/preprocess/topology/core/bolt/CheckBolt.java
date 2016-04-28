@@ -9,6 +9,8 @@ import java.util.TreeMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -33,6 +35,7 @@ import com.ai.baas.dshm.client.interfaces.IDshmClient;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlBillItemData.FamilyColumnName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsNecessary;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsPrimaryKey;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
@@ -135,7 +138,9 @@ public class CheckBolt extends BaseBasicBolt {
 
             Map<String, String> data = messageParser.getData();
             String tenantId = data.get(BaseConstants.TENANT_ID);
-            String batchNo = data.get(BaseConstants.BATCH_SERIAL_NUMBER);
+            String batchNo = data.get(SmcConstants.BATCH_NO);
+
+            // String batchNo = data.get(BaseConstants.BATCH_SERIAL_NUMBER);
             String orderId = data.get(SmcConstants.ORDER_ID);
             String applyTime = data.get(SmcConstants.APPLY_TIME);
             // 数据导入日志表中查询此批次数据的数据对象(redis)
@@ -146,8 +151,6 @@ public class CheckBolt extends BaseBasicBolt {
                         tenantId + "." + batchNo + "租户id.批次号在共享内存中获得数据对象为空");
             }
             Map<String, String> map = results.get(0);
-            // String objectId = "msg";
-            // String billTimeSn = "201603";
             String objectId = map.get("object_id");
             String billTimeSn = map.get("bill_time_sn");
             logger.info("共享内存获得的objectId=" + objectId);
@@ -165,6 +168,7 @@ public class CheckBolt extends BaseBasicBolt {
             for (StlElement stlElement : list) {
                 if (stlElement.getAttrType().equals("normal")) {
                     String element = data.get(stlElement.getElementCode());
+                    System.out.println("元素id" + stlElement.getElementCode() + "元素值" + element);
                     Boolean NecessaryResult = checkIsNecessary(element, stlElement);
                     if (!NecessaryResult) {
                         // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
@@ -226,10 +230,10 @@ public class CheckBolt extends BaseBasicBolt {
             successBuilder.append(batchNo);
             successBuilder.append("_");
             successBuilder.append("verify_success");
-            countCacheClient.incr(successBuilder.toString());
+            long num = countCacheClient.incr(successBuilder.toString());
+            logger.info("成功记录数加1后为" + num);
             // 成功记录数加1
         } else {
-
             StringBuilder failedBuilder = new StringBuilder();
             failedBuilder.append("busiData");
             failedBuilder.append("_");
@@ -238,7 +242,8 @@ public class CheckBolt extends BaseBasicBolt {
             failedBuilder.append(batchNo);
             failedBuilder.append("_");
             failedBuilder.append("verify_failure");
-            countCacheClient.incr(failedBuilder.toString());
+            long numFailed = countCacheClient.incr(failedBuilder.toString());
+            logger.info("成功记录数加1后为" + numFailed);
             // 失败记录数加1
         }
     }
@@ -259,45 +264,48 @@ public class CheckBolt extends BaseBasicBolt {
         stlOrderDatakey.append(applyTime);
         String tableName = SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm;
         Table tableStlOrderData = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
-        if (tableStlOrderData == null) {
-            throw new BusinessException("1111", "表不存在");
-        }
-        @SuppressWarnings({ "deprecation", "resource" })
+        @SuppressWarnings("deprecation")
         HBaseAdmin admin = new HBaseAdmin(conf);
         System.out.print(admin.tableExists(tableName));
         if (!admin.tableExists(tableName)) {
-            throw new BusinessException("1111", "表不存在");
+            HTableDescriptor tableDesc = new HTableDescriptor(tableName);
+            tableDesc.addFamily(new HColumnDescriptor(FamilyColumnName.COLUMN_DEF.getBytes()));
+            admin.createTable(tableDesc);
+            System.out.println("新建的hbase表名为：" + tableName);
+
         }
         Put put = new Put(stlOrderDatakey.toString().getBytes());
-        // put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
-        // SmcHbaseConstants.StlOrderData.TENANT_ID.getBytes(), tenantId.getBytes());
-        // put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
-        // SmcHbaseConstants.StlOrderData.BATCH_NO.getBytes(), batchNo.getBytes());
-        // put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
-        // SmcHbaseConstants.StlOrderData.OBJECT_ID.getBytes(), objectId.getBytes());
-        // put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
-        // SmcHbaseConstants.StlOrderData.ORDER_ID.getBytes(), orderId.getBytes());
-        // put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
-        // SmcHbaseConstants.StlOrderData.APPLY_TIME.getBytes(), applyTime.getBytes());
-        // put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
-        // SmcHbaseConstants.StlOrderData.VERIFY_STATE.getBytes(), verifyState.getBytes());
-        // put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
-        // SmcHbaseConstants.StlOrderData.VERIFY_DESC.getBytes(), verifydesc.getBytes());
-        String testString = "data";
-        put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.TENANT_ID.getBytes(),
-                tenantId.getBytes());
-        put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.BATCH_NO.getBytes(),
-                batchNo.getBytes());
-        put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.OBJECT_ID.getBytes(),
-                objectId.getBytes());
-        put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.ORDER_ID.getBytes(),
-                orderId.getBytes());
-        put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.APPLY_TIME.getBytes(),
-                applyTime.getBytes());
-        put.addColumn(testString.getBytes(),
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.TENANT_ID.getBytes(), tenantId.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.BATCH_NO.getBytes(), batchNo.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.OBJECT_ID.getBytes(), objectId.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.ORDER_ID.getBytes(), orderId.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.APPLY_TIME.getBytes(), applyTime.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
                 SmcHbaseConstants.StlOrderData.VERIFY_STATE.getBytes(), verifyState.getBytes());
-        put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.VERIFY_DESC.getBytes(),
-                verifydesc.getBytes());
+        put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
+                SmcHbaseConstants.StlOrderData.VERIFY_DESC.getBytes(), verifydesc.getBytes());
+        // String testString = "data";
+        // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.TENANT_ID.getBytes(),
+        // tenantId.getBytes());
+        // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.BATCH_NO.getBytes(),
+        // batchNo.getBytes());
+        // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.OBJECT_ID.getBytes(),
+        // objectId.getBytes());
+        // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.ORDER_ID.getBytes(),
+        // orderId.getBytes());
+        // put.addColumn(testString.getBytes(),
+        // SmcHbaseConstants.StlOrderData.APPLY_TIME.getBytes(),
+        // applyTime.getBytes());
+        // put.addColumn(testString.getBytes(),
+        // SmcHbaseConstants.StlOrderData.VERIFY_STATE.getBytes(), verifyState.getBytes());
+        // put.addColumn(testString.getBytes(),
+        // SmcHbaseConstants.StlOrderData.VERIFY_DESC.getBytes(),
+        // verifydesc.getBytes());
         tableStlOrderData.put(put);
     }
 
@@ -368,7 +376,7 @@ public class CheckBolt extends BaseBasicBolt {
 
         } else if (type.DATETIME.equals(valueType)) {
             try {
-                SimpleDateFormat sdf = new SimpleDateFormat("YYYYMMDD");
+                SimpleDateFormat sdf = new SimpleDateFormat("YYYYMMDDhhmmss");
                 Date date = new Date();
                 date = sdf.parse(element); // Mon Jan 14 00:00:00 CST 2013
 
