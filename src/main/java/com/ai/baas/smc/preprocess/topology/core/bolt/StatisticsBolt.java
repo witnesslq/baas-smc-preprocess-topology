@@ -312,6 +312,8 @@ public class StatisticsBolt extends BaseBasicBolt {
             cacheStatsTimes.set(finishKey, JSON.toJSONString(finishListVos));
             System.out.println("num == totalRecord加入到缓存的完成队列触发计算拓扑"
                     + JSON.toJSONString(finishListVos));
+            logger.info("@统计@num == totalRecord加入到缓存的完成队列触发计算拓扑的值为："
+                    + JSON.toJSONString(finishListVos));
         } else {
             List<FinishListVo> list = JSON.parseArray(cacheStatsTimesValues, FinishListVo.class);
             FinishListVo finishListVoNew = new FinishListVo();
