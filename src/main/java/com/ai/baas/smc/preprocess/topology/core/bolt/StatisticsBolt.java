@@ -135,6 +135,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             Map<String, String> data = messageParser.getData();
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
+            String finishbatchNo = data.get(BaseConstants.BATCH_SERIAL_NUMBER);
             int totalRecord = Integer.parseInt(data.get(SmcConstants.TOTAL_RECORD));
             List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
             if (results.size() == 0) {
@@ -155,7 +156,8 @@ public class StatisticsBolt extends BaseBasicBolt {
                     Long policyId = Long.parseLong(policyIdString);
                     String elements = cacheClientPolicyToElement.hget(
                             NameSpace.POLICY_ELEMENT_CACHE, tenantIdpolicyId + "_" + objectId);
-                    logger.info(tenantIdpolicyId + "_" + objectId + ":@统计@此key获得的元素对象list为：" + elements);
+                    logger.info(tenantIdpolicyId + "_" + objectId + ":@统计@此key获得的元素对象list为："
+                            + elements);
                     if (!StringUtil.isBlank(elements)) {
                         List<StlElement> elements2 = JSON.parseArray(elements, StlElement.class);
                         for (StlElement stlElement : elements2) {
@@ -271,7 +273,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             logger.info("@统计@目前统计到的数值为：" + num);
             if (num == totalRecord) {// 加入到缓存的完成队列触发计算拓扑 busidata_租户ID _批次号_账期_数据对象_stats_times
 
-                updateFinishRedis(tenantId, objectId, billTimeSn, batchNo,
+                updateFinishRedis(tenantId, objectId, billTimeSn, finishbatchNo,
                         Integer.toString(totalRecord), cacheStatsTimes);
 
             } else if (num > totalRecord) {
