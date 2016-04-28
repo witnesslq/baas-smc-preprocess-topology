@@ -231,7 +231,8 @@ public class CheckBolt extends BaseBasicBolt {
             successBuilder.append("_");
             successBuilder.append("verify_success");
             long num = countCacheClient.incr(successBuilder.toString());
-            logger.info("成功记录数加1后为" + num);
+            logger.info("@校验@成功记录数key为：" + successBuilder.toString());
+            logger.info("@校验@成功记录数加1后为" + num);
             // 成功记录数加1
         } else {
             StringBuilder failedBuilder = new StringBuilder();
@@ -243,7 +244,8 @@ public class CheckBolt extends BaseBasicBolt {
             failedBuilder.append("_");
             failedBuilder.append("verify_failure");
             long numFailed = countCacheClient.incr(failedBuilder.toString());
-            logger.info("成功记录数加1后为" + numFailed);
+            logger.info("@校验@失败记录数key为:" + failedBuilder.toString());
+            logger.info("@校验@失败记录数加1后为:" + numFailed);
             // 失败记录数加1
         }
     }
@@ -274,6 +276,8 @@ public class CheckBolt extends BaseBasicBolt {
             System.out.println("新建的hbase表名为：" + tableName);
 
         }
+        System.out.println("@校验@统计成功或失败，表名为：" + tableName);
+
         Put put = new Put(stlOrderDatakey.toString().getBytes());
         put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
                 SmcHbaseConstants.StlOrderData.TENANT_ID.getBytes(), tenantId.getBytes());
@@ -289,6 +293,14 @@ public class CheckBolt extends BaseBasicBolt {
                 SmcHbaseConstants.StlOrderData.VERIFY_STATE.getBytes(), verifyState.getBytes());
         put.addColumn(FamilyColumnName.COLUMN_DEF.getBytes(),
                 SmcHbaseConstants.StlOrderData.VERIFY_DESC.getBytes(), verifydesc.getBytes());
+        System.out.println("@校验@统计成功或失败，key为：" + stlOrderDatakey.toString());
+        System.out.println("@校验@统计成功或失败，值为：" + "tenantId:" + tenantId + "batchNo:" + batchNo
+                + "objectId:" + objectId + "orderId:" + orderId + "applyTime:" + applyTime
+                + "verifyState:" + verifyState + "verifydesc:" + verifydesc);
+        logger.info("@校验@统计成功或失败，key为：" + stlOrderDatakey.toString());
+        logger.info("@校验@统计成功或失败，值为：" + "tenantId:" + tenantId + "batchNo:" + batchNo + "objectId:"
+                + objectId + "orderId:" + orderId + "applyTime:" + applyTime + "verifyState:"
+                + verifyState + "verifydesc:" + verifydesc);
         // String testString = "data";
         // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.TENANT_ID.getBytes(),
         // tenantId.getBytes());

@@ -155,7 +155,7 @@ public class StatisticsBolt extends BaseBasicBolt {
                     Long policyId = Long.parseLong(policyIdString);
                     String elements = cacheClientPolicyToElement.hget(
                             NameSpace.POLICY_ELEMENT_CACHE, tenantIdpolicyId + "_" + objectId);
-                    logger.info(tenantIdpolicyId + "_" + objectId + ":此key获得的元素对象list为：" + elements);
+                    logger.info(tenantIdpolicyId + "_" + objectId + ":@统计@此key获得的元素对象list为：" + elements);
                     if (!StringUtil.isBlank(elements)) {
                         List<StlElement> elements2 = JSON.parseArray(elements, StlElement.class);
                         for (StlElement stlElement : elements2) {
@@ -170,8 +170,8 @@ public class StatisticsBolt extends BaseBasicBolt {
                                 cacheClientStlObjStat.set(key, value);
                                 // System.out.println("租户ID+政策ID+账期+统计元素ID key值为：" + key);
                                 // System.out.println("租户ID+政策ID+账期+统计元素ID value值为：" + key);
-                                logger.info("租户ID+政策ID+账期+统计元素ID key值为：" + key);
-                                logger.info("租户ID+政策ID+账期+统计元素ID value值为：" + key);
+                                logger.info("@统计@租户ID+政策ID+账期+统计元素ID key值为：" + key);
+                                logger.info("@统计@租户ID+政策ID+账期+统计元素ID 累加前value值为：" + value);
 
                             }
                             // 获得统计元素属性表的对象list组个进行限定条件校验，
@@ -180,7 +180,7 @@ public class StatisticsBolt extends BaseBasicBolt {
                                             + stlElement.getElementId().toString() + "_" + objectId);
                             logger.info("取政策表的key为" + tenantIdpolicyId + "_" + objectId);
                             logger.info(tenantId + "_" + stlElement.getElementId().toString() + "_"
-                                    + objectId + "获得统计元素属性表的对象list值为：" + elementResult);
+                                    + objectId + "@统计@获得统计元素属性表的对象list值为：" + elementResult);
                             // System.out.println("取政策表的key为" + tenantIdpolicyId + "_" + objectId);
                             // System.out.println(tenantId + "_"
                             // + stlElement.getElementId().toString() + "_" + objectId
@@ -219,15 +219,16 @@ public class StatisticsBolt extends BaseBasicBolt {
                                 }
                                 // 结算对象统计数据表 统计次数+1
                                 String resultValue = cacheClientStlObjStat.get(key);
-                                logger.info("结算对象统计数据表 统计次数为：" + resultValue);
-                                System.out.println("结算对象统计数据表 统计次数为：" + resultValue);
+                                logger.info("@统计@结算对象统计数据表 统计次数为：" + resultValue);
+                                System.out.println("@统计@结算对象统计数据表 统计次数为：" + resultValue);
                                 if (flag) { // 如果满足则根据汇总方式进行累加 ,结算对象统计数据表的统计次数加1
-                                    System.out.println("######累加方式为："
+                                    System.out.println("@统计@######累加方式为："
                                             + stlElement.getStatisticsType());
-                                    logger.info("######累加方式为：" + stlElement.getStatisticsType());
+                                    logger.info("@统计@######累加方式为：" + stlElement.getStatisticsType());
                                     if (StatisticsType.RECORD_COUNT.equals(stlElement
                                             .getStatisticsType())) {
                                         System.out.println("#####记录数累加");
+                                        logger.info("@统计@#####记录数累加");
                                         increase(resultValue, 1L, key, true);
                                     } else if (StatisticsType.VALUE_SUM.equals(stlElement
                                             .getStatisticsType())) {
@@ -247,6 +248,7 @@ public class StatisticsBolt extends BaseBasicBolt {
                                         Long num = Long.parseLong(data.get(stlElementNew
                                                 .getElementCode()));
                                         System.out.println("#####按值累加");
+                                        logger.info("@统计@#####按值累加");
                                         increase(resultValue, num, key, true);
                                     }
                                 } else {// 如果不满足则结算对象统计数据表的 统计次数加1
@@ -264,9 +266,9 @@ public class StatisticsBolt extends BaseBasicBolt {
             System.out.println("busidata_租户ID _批次号_stats_timesKey值为：" + countKey);
             System.out.println("记录总数值为：" + totalRecord);
             System.out.println("目前统计到的数值为：" + num);
-            logger.info("busidata_租户ID _批次号_stats_timesKey值为：" + countKey);
-            logger.info("记录总数值为：" + totalRecord);
-            logger.info("目前统计到的数值为：" + num);
+            logger.info("@统计@busidata_租户ID _批次号_stats_timesKey值为：" + countKey);
+            logger.info("@统计@记录总数值为：" + totalRecord);
+            logger.info("@统计@目前统计到的数值为：" + num);
             if (num == totalRecord) {// 加入到缓存的完成队列触发计算拓扑 busidata_租户ID _批次号_账期_数据对象_stats_times
 
                 updateFinishRedis(tenantId, objectId, billTimeSn, batchNo,
@@ -362,7 +364,8 @@ public class StatisticsBolt extends BaseBasicBolt {
         }
         resultNew.append("_");
         resultNew.append(timesNew.toString());
-        System.out.println("key值为" + key + "value值为：" + resultNew.toString());
+        System.out.println("@统计@累加后的key值为" + key + "value值为：" + resultNew.toString());
+        logger.info("@统计@累加后的key值为" + key + "value值为：" + resultNew.toString());
         cacheClientStlObjStat.set(key, resultNew.toString());
     }
 
