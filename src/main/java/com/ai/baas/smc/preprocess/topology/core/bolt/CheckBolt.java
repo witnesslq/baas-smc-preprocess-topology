@@ -127,6 +127,8 @@ public class CheckBolt extends BaseBasicBolt {
         /* 接收输入报文 */
         String inputData = input.getString(0);
         logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
+        Long numberLong = countCacheClient.incr(inputData);
+        logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
         if (StringUtils.isBlank(inputData)) {
             logger.error("流水为空");
             return;
@@ -216,7 +218,8 @@ public class CheckBolt extends BaseBasicBolt {
             increaseRedise(true, tenantId, batchNo);
             collector.emit(new Values(inputData));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常为：", e);
+
         }
     }
 
@@ -305,23 +308,6 @@ public class CheckBolt extends BaseBasicBolt {
         logger.info("@校验@统计成功或失败，值为：" + "tenantId:" + tenantId + "batchNo:" + batchNo + "objectId:"
                 + objectId + "orderId:" + orderId + "applyTime:" + applyTime + "verifyState:"
                 + verifyState + "verifydesc:" + verifydesc);
-        // String testString = "data";
-        // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.TENANT_ID.getBytes(),
-        // tenantId.getBytes());
-        // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.BATCH_NO.getBytes(),
-        // batchNo.getBytes());
-        // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.OBJECT_ID.getBytes(),
-        // objectId.getBytes());
-        // put.addColumn(testString.getBytes(), SmcHbaseConstants.StlOrderData.ORDER_ID.getBytes(),
-        // orderId.getBytes());
-        // put.addColumn(testString.getBytes(),
-        // SmcHbaseConstants.StlOrderData.APPLY_TIME.getBytes(),
-        // applyTime.getBytes());
-        // put.addColumn(testString.getBytes(),
-        // SmcHbaseConstants.StlOrderData.VERIFY_STATE.getBytes(), verifyState.getBytes());
-        // put.addColumn(testString.getBytes(),
-        // SmcHbaseConstants.StlOrderData.VERIFY_DESC.getBytes(),
-        // verifydesc.getBytes());
         tableStlOrderData.put(put);
     }
 
@@ -341,6 +327,8 @@ public class CheckBolt extends BaseBasicBolt {
             stlOrderDatakey.append("_");
             stlOrderDatakey.append(applyTime);
             String tableName = "stl_order_data_" + applyTime.substring(0, 6);
+            System.out.println("表名为：" + tableName);
+            System.out.println(HBaseProxy.getConnection());
             Table tables = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
             Get get = new Get(stlOrderDatakey.toString().getBytes());
             Result result = tables.get(get);
