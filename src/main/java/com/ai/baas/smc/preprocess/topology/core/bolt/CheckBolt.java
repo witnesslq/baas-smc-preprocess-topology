@@ -127,7 +127,7 @@ public class CheckBolt extends BaseBasicBolt {
         /* 接收输入报文 */
         String inputData = input.getString(0);
         logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
-        Long numberLong = countCacheClient.incr(inputData);
+        Long numberLong = countCacheClient.incr(inputData.substring(0, 10));
         logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
         if (StringUtils.isBlank(inputData)) {
             logger.error("流水为空");
