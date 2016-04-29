@@ -127,6 +127,7 @@ public class CheckBolt extends BaseBasicBolt {
         /* 接收输入报文 */
         String inputData = input.getString(0);
         logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
+        logger.info("@校验@进入到校验bolt的流水数量key为" + inputData.substring(0, 10));
         Long numberLong = countCacheClient.incr(inputData.substring(0, 10));
         logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
         if (StringUtils.isBlank(inputData)) {
@@ -219,6 +220,7 @@ public class CheckBolt extends BaseBasicBolt {
             collector.emit(new Values(inputData));
         } catch (Exception e) {
             logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常为：", e);
+            logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常流水为：", inputData);
 
         }
     }
