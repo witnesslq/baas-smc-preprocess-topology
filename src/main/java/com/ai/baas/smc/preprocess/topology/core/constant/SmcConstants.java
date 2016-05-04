@@ -30,7 +30,7 @@ public final class SmcConstants {
 
     public static final String BILL_DETAIL_CHECK_BOLT = "bill_detail_checking";
 
-    public static final String FINISHKEY = "busidata_tenantId_batchNo_billTimeSn_objectId_stats_times";
+    public static final String FINISHKEY = "smc_stat_times";
 
     /**
      * 基础元素表<br>

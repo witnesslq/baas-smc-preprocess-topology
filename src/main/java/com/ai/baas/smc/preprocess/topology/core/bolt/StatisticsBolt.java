@@ -125,9 +125,8 @@ public class StatisticsBolt extends BaseBasicBolt {
     public void execute(Tuple input, BasicOutputCollector collector) {
         // TODO Auto-generated method stub
         /* 接收输入报文 */
-
+        String inputData = input.getString(0);
         try {
-            String inputData = input.getString(0);
             String numberLong = countCacheClient.get(inputData.substring(0, 10));
             logger.info("@统计@进入到统计bolt的流水数量为" + numberLong);
             logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
@@ -284,6 +283,8 @@ public class StatisticsBolt extends BaseBasicBolt {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            logger.error("@@@@@@@@@@@@@@统计@统计bolt的异常为：", e);
+            logger.error("@@@@@@@@@@@@@@统计@统计bolt的异常流水为：", inputData);
         }
     }
 

@@ -125,19 +125,20 @@ public class CheckBolt extends BaseBasicBolt {
     public void execute(Tuple input, BasicOutputCollector collector) {
         // TODO Auto-generated method stub
         /* 接收输入报文 */
+
         String inputData = input.getString(0);
-        logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
-        logger.info("@校验@进入到校验bolt的流水数量key为" + inputData.substring(0, 10));
-        Long numberLong = countCacheClient.incr(inputData.substring(0, 10));
-        logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
-        if (StringUtils.isBlank(inputData)) {
-            logger.error("流水为空");
-            return;
-        }
-        /* 解析报文 */
-        MessageParser messageParser = null;
         try {
-            messageParser = MessageParser.parseObject(inputData, mappingRules, outputFields);
+            logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
+            logger.info("@校验@进入到校验bolt的流水数量key为" + inputData.substring(0, 20));
+            Long numberLong = countCacheClient.incr(inputData.substring(0, 10));
+            logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
+            if (StringUtils.isBlank(inputData)) {
+                logger.error("流水为空");
+                return;
+            }
+            /* 解析报文 */
+            MessageParser messageParser = MessageParser.parseObject(inputData, mappingRules,
+                    outputFields);
 
             Map<String, String> data = messageParser.getData();
             String tenantId = data.get(BaseConstants.TENANT_ID);
@@ -178,8 +179,7 @@ public class CheckBolt extends BaseBasicBolt {
                         assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime,
                                 "失败", "必填元素为空");
                         increaseRedise(false, tenantId, batchNo);
-                        // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-                        // collector.emit(new Values(inputData));
+
                         FailBillHandler.addFailBillMsg(data, SmcConstants.BILL_DETAIL_CHECK_BOLT,
                                 SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
                         throw new BusinessException(
@@ -221,7 +221,7 @@ public class CheckBolt extends BaseBasicBolt {
         } catch (Exception e) {
             logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常为：", e);
             logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常流水为：", inputData);
-
+            FailBillHandler.addFailBillMsg(inputData, "预处理拓扑", "校验bolt", e.getMessage());
         }
     }
 
