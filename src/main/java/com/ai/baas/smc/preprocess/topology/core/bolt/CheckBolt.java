@@ -267,12 +267,12 @@ public class CheckBolt extends BaseBasicBolt {
         stlOrderDatakey.append(objectId);
         stlOrderDatakey.append("_");
         stlOrderDatakey.append(orderId);
-        stlOrderDatakey.append("_");
-        stlOrderDatakey.append(applyTime);
-        stlOrderDatakey.append("_");
-        stlOrderDatakey.append(verifyState);
-        stlOrderDatakey.append("_");
-        stlOrderDatakey.append(verifydesc);
+        // stlOrderDatakey.append("_");
+        // stlOrderDatakey.append(applyTime);
+        // stlOrderDatakey.append("_");
+        // stlOrderDatakey.append(verifyState);
+        // stlOrderDatakey.append("_");
+        // stlOrderDatakey.append(verifydesc);
         String tableName = SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm;
         Table tableStlOrderData = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
         @SuppressWarnings("deprecation")
@@ -326,8 +326,6 @@ public class CheckBolt extends BaseBasicBolt {
             stlOrderDatakey.append(objectId);
             stlOrderDatakey.append("_");
             stlOrderDatakey.append(orderId);
-            stlOrderDatakey.append("_");
-            stlOrderDatakey.append(applyTime);
             String tableName = "stl_order_data_" + applyTime.substring(0, 6);
             System.out.println("表名为：" + tableName);
             System.out.println(HBaseProxy.getConnection());
