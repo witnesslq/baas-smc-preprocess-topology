@@ -12,8 +12,8 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Table;
@@ -110,6 +110,8 @@ public class CheckBolt extends BaseBasicBolt {
         }
 
         conf = HBaseConfiguration.create();
+        conf.set("hbase.zookeeper.quorum", "10.1.130.84,10.1.130.85,10.1.236.122");
+        conf.set("hbase.zookeeper.property.clientPort", "49181");
         JdbcProxy.loadDefaultResource(stormConf);
         /* 初始化hbase */
         HBaseProxy.loadResource(stormConf);
@@ -274,14 +276,25 @@ public class CheckBolt extends BaseBasicBolt {
         String tableName = SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm;
         Table tableStlOrderData = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
         @SuppressWarnings("deprecation")
-        HBaseAdmin admin = new HBaseAdmin(conf);
-        System.out.print(admin.tableExists(tableName));
-        if (!admin.tableExists(tableName)) {
-            HTableDescriptor tableDesc = new HTableDescriptor(tableName);
+        // Admin admin = HBaseProxy.getConnection().getAdmin();
+        // if (!admin.isTableAvailable(TableName
+        // .valueOf(tableName))) {
+        // HTableDescriptor tableDesc = new HTableDescriptor(
+        // TableName.valueOf(tableName));
+        // tableDesc.addFamily(new HColumnDescriptor(
+        // "dup"));
+        // admin.createTable(tableDesc);
+        // logger.info("Create table [{}] ok!",
+        // tableName);
+        // }
+        Admin admin = HBaseProxy.getConnection().getAdmin();
+        // HBaseAdmin admin = new HBaseAdmin(conf);
+        // System.out.print(admin.isTableAvailable(TableName.valueof(tableName)));
+        if (!admin.isTableAvailable(TableName.valueOf(tableName))) {
+            HTableDescriptor tableDesc = new HTableDescriptor(TableName.valueOf(tableName));
             tableDesc.addFamily(new HColumnDescriptor(FamilyColumnName.COLUMN_DEF.getBytes()));
             admin.createTable(tableDesc);
             System.out.println("新建的hbase表名为：" + tableName);
-
         }
         System.out.println("@校验@统计成功或失败，表名为：" + tableName);
 
