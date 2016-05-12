@@ -110,8 +110,6 @@ public class CheckBolt extends BaseBasicBolt {
         }
 
         conf = HBaseConfiguration.create();
-        conf.set("hbase.zookeeper.quorum", "10.1.130.84,10.1.130.85,10.1.236.122");
-        conf.set("hbase.zookeeper.property.clientPort", "49181");
         JdbcProxy.loadDefaultResource(stormConf);
         /* 初始化hbase */
         HBaseProxy.loadResource(stormConf);
