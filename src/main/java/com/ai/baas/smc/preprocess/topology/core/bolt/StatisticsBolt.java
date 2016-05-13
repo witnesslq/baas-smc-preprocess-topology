@@ -127,7 +127,7 @@ public class StatisticsBolt extends BaseBasicBolt {
         /* 接收输入报文 */
         String inputData = input.getString(0);
         try {
-            String numberLong = countCacheClient.get(inputData.substring(0, 10));
+            String numberLong = countCacheClient.get(inputData.substring(0, 20));
             logger.info("@统计@进入到统计bolt的流水数量为" + numberLong);
             logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
             /* 解析报文 */

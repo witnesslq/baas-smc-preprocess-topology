@@ -130,7 +130,7 @@ public class CheckBolt extends BaseBasicBolt {
         try {
             logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
             logger.info("@校验@进入到校验bolt的流水数量key为" + inputData.substring(0, 20));
-            Long numberLong = countCacheClient.incr(inputData.substring(0, 10));
+            Long numberLong = countCacheClient.incr(inputData.substring(0, 20));
             logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
             if (StringUtils.isBlank(inputData)) {
                 logger.error("流水为空");
@@ -177,7 +177,7 @@ public class CheckBolt extends BaseBasicBolt {
                     if (!NecessaryResult) {
                         // 必填数据为空失败,KEY：租户ID_批次号_数据对象_流水ID_流水产生日期(YYYYMMDD)
                         assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime,
-                                "失败", "必填元素为空");
+                                "失败", "必填元素为空", inputData);
                         increaseRedise(false, tenantId, batchNo);
 
                         FailBillHandler.addFailBillMsg(data, SmcConstants.BILL_DETAIL_CHECK_BOLT,
@@ -189,7 +189,7 @@ public class CheckBolt extends BaseBasicBolt {
                         Boolean ValueTypeResult = checkValueType(element, stlElement);
                         if (!ValueTypeResult) {
                             assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
-                                    applyTime, "失败", "必填元素为空");
+                                    applyTime, "失败", "必填元素为空", inputData);
                             increaseRedise(false, tenantId, batchNo);
                             FailBillHandler.addFailBillMsg(data,
                                     SmcConstants.BILL_DETAIL_CHECK_BOLT,
@@ -202,7 +202,7 @@ public class CheckBolt extends BaseBasicBolt {
                                     orderId, applyTime);
                             if (!IsPKResult) {
                                 assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
-                                        applyTime, "失败", "是否主键与设定不符");
+                                        applyTime, "失败", "是否主键与设定不符", inputData);
                                 increaseRedise(false, tenantId, batchNo);
                                 FailBillHandler.addFailBillMsg(data,
                                         SmcConstants.BILL_DETAIL_CHECK_BOLT,
@@ -215,7 +215,8 @@ public class CheckBolt extends BaseBasicBolt {
                     }
                 }
             }
-            assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime, "成功", "校验通过");
+            assemResult(tenantId, batchNo, billTimeSn, objectId, orderId, applyTime, "成功", "校验通过",
+                    inputData);
             increaseRedise(true, tenantId, batchNo);
             collector.emit(new Values(inputData));
         } catch (Exception e) {
@@ -256,8 +257,8 @@ public class CheckBolt extends BaseBasicBolt {
     }
 
     private void assemResult(String tenantId, String batchNo, String billTimeSn, String objectId,
-            String orderId, String applyTime, String verifyState, String verifydesc)
-            throws Exception {
+            String orderId, String applyTime, String verifyState, String verifydesc,
+            String inputData) throws Exception {
         String yyyyMm = billTimeSn.substring(0, 6);
         StringBuilder stlOrderDatakey = new StringBuilder();
         stlOrderDatakey.append(tenantId);
@@ -275,7 +276,7 @@ public class CheckBolt extends BaseBasicBolt {
         // stlOrderDatakey.append(verifydesc);
         String tableName = SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm;
         Table tableStlOrderData = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
-        @SuppressWarnings("deprecation")
+        // @SuppressWarnings("deprecation")
         // Admin admin = HBaseProxy.getConnection().getAdmin();
         // if (!admin.isTableAvailable(TableName
         // .valueOf(tableName))) {
@@ -321,6 +322,7 @@ public class CheckBolt extends BaseBasicBolt {
         logger.info("@校验@统计成功或失败，值为：" + "tenantId:" + tenantId + "batchNo:" + batchNo + "objectId:"
                 + objectId + "orderId:" + orderId + "applyTime:" + applyTime + "verifyState:"
                 + verifyState + "verifydesc:" + verifydesc);
+        logger.info("@校验@统计成功或失败流水为：" + inputData);
         tableStlOrderData.put(put);
     }
 
