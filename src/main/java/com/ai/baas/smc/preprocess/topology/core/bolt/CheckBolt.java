@@ -2,9 +2,11 @@ package com.ai.baas.smc.preprocess.topology.core.bolt;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 
 import org.apache.hadoop.conf.Configuration;
@@ -36,6 +38,7 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlBillItemData.FamilyColumnName;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.Dshm;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsNecessary;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsPrimaryKey;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
@@ -50,7 +53,8 @@ import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
 import com.ai.baas.storm.util.HBaseProxy;
-import com.ai.opt.sdk.cache.factory.CacheClientFactory;
+import com.ai.opt.sdk.components.base.ComponentConfigLoader;
+import com.ai.opt.sdk.components.mcs.MCSClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
 import com.ai.paas.ipaas.mcs.interfaces.ICacheClient;
@@ -88,30 +92,54 @@ public class CheckBolt extends BaseBasicBolt {
         // TODO Auto-generated method stub
         super.prepare(stormConf, context);
         if (cacheClient == null) {
-            cacheClient = CacheClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
+            cacheClient = MCSClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
         }
         if (successRecordcacheClient == null) {
-            successRecordcacheClient = CacheClientFactory.getCacheClient(NameSpace.SUCCESS_RECORD);
+            successRecordcacheClient = MCSClientFactory.getCacheClient(NameSpace.SUCCESS_RECORD);
         }
         if (failedRecordcacheClient == null) {
-            failedRecordcacheClient = CacheClientFactory.getCacheClient(NameSpace.FAILED_RECORD);
+            failedRecordcacheClient = MCSClientFactory.getCacheClient(NameSpace.FAILED_RECORD);
         }
         if (countCacheClient == null) {
-            countCacheClient = CacheClientFactory.getCacheClient(NameSpace.CHECK_COUNT_CACHE);
+            countCacheClient = MCSClientFactory.getCacheClient(NameSpace.CHECK_COUNT_CACHE);
         }
         if (dshmClient == null) {
             dshmClient = new DshmClient();
         }
         if (calParamCacheClient == null) {
-            calParamCacheClient = CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
+
+            Properties p = new Properties();
+            p.setProperty(Dshm.PAAS_AUTH_URL,
+                    "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
+            p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
+            p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
+            p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
+            ComponentConfigLoader.loadPaaSConf(p);
+
+            // Properties p = new Properties();
+            // p.setProperty(Dshm.PAAS_AUTH_URL, (String) stormConf.get(Dshm.PAAS_AUTH_URL));
+            // p.setProperty(Dshm.PAAS_AUTH_PID, (String) stormConf.get(Dshm.PAAS_AUTH_PID));
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, (String)
+            // stormConf.get(Dshm.PAAS_CCS_SERVICEID));
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD,
+            // (String) stormConf.get(Dshm.PAAS_CCS_SERVICEPASSWORD));
+
+            // p.setProperty(Dshm.PAAS_AUTH_URL,
+            // "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
+            // p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
+            // calParamCacheClient = CacheFactoryUtil.getCacheClient(p,
+            // CacheBLMapper.CACHE_BL_CAL_PARAM);
+            // calParamCacheClient =
+            // MCSClientFactory.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
+
         }
         if (sysCacheClient == null) {
-            sysCacheClient = CacheFactoryUtil.getCacheClient(NameSpace.SYS_PARAM_CACHE);
+            sysCacheClient = MCSClientFactory.getCacheClient(NameSpace.SYS_PARAM_CACHE);
         }
 
         conf = HBaseConfiguration.create();
-        conf.set("hbase.zookeeper.quorum", "10.1.130.84,10.1.130.85,10.1.236.122");
-        conf.set("hbase.zookeeper.property.clientPort", "49181");
         JdbcProxy.loadDefaultResource(stormConf);
         /* 初始化hbase */
         HBaseProxy.loadResource(stormConf);
@@ -148,7 +176,6 @@ public class CheckBolt extends BaseBasicBolt {
             String orderId = data.get(SmcConstants.ORDER_ID);
             String applyTime = data.get(SmcConstants.APPLY_TIME);
             // 数据导入日志表中查询此批次数据的数据对象(redis)
-
             List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
             if (results.size() == 0) {
                 throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
@@ -276,21 +303,7 @@ public class CheckBolt extends BaseBasicBolt {
         // stlOrderDatakey.append(verifydesc);
         String tableName = SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm;
         Table tableStlOrderData = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
-        // @SuppressWarnings("deprecation")
-        // Admin admin = HBaseProxy.getConnection().getAdmin();
-        // if (!admin.isTableAvailable(TableName
-        // .valueOf(tableName))) {
-        // HTableDescriptor tableDesc = new HTableDescriptor(
-        // TableName.valueOf(tableName));
-        // tableDesc.addFamily(new HColumnDescriptor(
-        // "dup"));
-        // admin.createTable(tableDesc);
-        // logger.info("Create table [{}] ok!",
-        // tableName);
-        // }
         Admin admin = HBaseProxy.getConnection().getAdmin();
-        // HBaseAdmin admin = new HBaseAdmin(conf);
-        // System.out.print(admin.isTableAvailable(TableName.valueof(tableName)));
         if (!admin.isTableAvailable(TableName.valueOf(tableName))) {
             HTableDescriptor tableDesc = new HTableDescriptor(TableName.valueOf(tableName));
             tableDesc.addFamily(new HColumnDescriptor(FamilyColumnName.COLUMN_DEF.getBytes()));
@@ -416,6 +429,7 @@ public class CheckBolt extends BaseBasicBolt {
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
+        calParamCacheClient = MCSClientFactory.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         Map<String, String> params = new TreeMap<String, String>();
         params.put(SmcConstants.DshmKeyName.TENANT_ID, tenantId);
         params.put(SmcConstants.DshmKeyName.BATCH_NO, batchNo);

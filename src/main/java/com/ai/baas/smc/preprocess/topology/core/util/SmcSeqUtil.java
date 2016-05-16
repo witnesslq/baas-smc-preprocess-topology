@@ -3,7 +3,7 @@ package com.ai.baas.smc.preprocess.topology.core.util;
 import java.security.SecureRandom;
 
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcSeqConstants;
-import com.ai.opt.sdk.sequence.util.SeqUtil;
+import com.ai.opt.sdk.components.sequence.util.SeqUtil;
 import com.ai.opt.sdk.util.UUIDUtil;
 
 public final class SmcSeqUtil {

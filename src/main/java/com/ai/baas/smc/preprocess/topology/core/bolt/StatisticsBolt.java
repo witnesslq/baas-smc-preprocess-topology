@@ -3,6 +3,7 @@ package com.ai.baas.smc.preprocess.topology.core.bolt;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 
 import org.slf4j.Logger;
@@ -24,6 +25,7 @@ import com.ai.baas.dshm.client.interfaces.IDshmClient;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.Dshm;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.StatisticsType;
 import com.ai.baas.smc.preprocess.topology.core.util.IKin;
 import com.ai.baas.smc.preprocess.topology.core.vo.FinishListVo;
@@ -34,7 +36,8 @@ import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
 import com.ai.baas.storm.util.HBaseProxy;
-import com.ai.opt.sdk.cache.factory.CacheClientFactory;
+import com.ai.opt.sdk.components.base.ComponentConfigLoader;
+import com.ai.opt.sdk.components.mcs.MCSClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
 import com.ai.paas.ipaas.mcs.interfaces.ICacheClient;
@@ -77,40 +80,65 @@ public class StatisticsBolt extends BaseBasicBolt {
         super.prepare(stormConf, context);
 
         if (elementCacheClient == null) {
-            elementCacheClient = CacheClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
+            elementCacheClient = MCSClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
         }
 
         if (cacheClientObjectToPolicy == null) {
-            cacheClientObjectToPolicy = CacheClientFactory
+            cacheClientObjectToPolicy = MCSClientFactory
                     .getCacheClient(NameSpace.OBJECT_POLICY_CACHE);
         }
         if (cacheClientPolicyToElement == null) {
-            cacheClientPolicyToElement = CacheClientFactory
+            cacheClientPolicyToElement = MCSClientFactory
                     .getCacheClient(NameSpace.POLICY_ELEMENT_CACHE);
         }
         if (cacheClientElement == null) {
-            cacheClientElement = CacheClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
+            cacheClientElement = MCSClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
         }
         if (cacheClientCount == null) {
-            cacheClientCount = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES_COUNT);
+            cacheClientCount = MCSClientFactory.getCacheClient(NameSpace.STATS_TIMES_COUNT);
         }
         if (cacheElementAttr == null) {
-            cacheElementAttr = CacheClientFactory.getCacheClient(NameSpace.STL_ELEMENT_ATTR_CACHE);
+            cacheElementAttr = MCSClientFactory.getCacheClient(NameSpace.STL_ELEMENT_ATTR_CACHE);
         }
         if (cacheStatsTimes == null) {
-            cacheStatsTimes = CacheClientFactory.getCacheClient(NameSpace.STATS_TIMES);
+            cacheStatsTimes = MCSClientFactory.getCacheClient(NameSpace.STATS_TIMES);
         }
         if (countCacheClient == null) {
-            countCacheClient = CacheClientFactory.getCacheClient(NameSpace.CHECK_COUNT_CACHE);
+            countCacheClient = MCSClientFactory.getCacheClient(NameSpace.CHECK_COUNT_CACHE);
         }
         if (dshmClient == null) {
             dshmClient = new DshmClient();
         }
         if (calParamCacheClient == null) {
-            calParamCacheClient = CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
+            // Properties p = new Properties();
+            // // p.setProperty(Dshm.PAAS_AUTH_URL, (String) stormConf.get(Dshm.PAAS_AUTH_URL));
+            // // p.setProperty(Dshm.PAAS_AUTH_PID, (String) stormConf.get(Dshm.PAAS_AUTH_PID));
+            // // p.setProperty(Dshm.PAAS_CCS_SERVICEID, (String)
+            // // stormConf.get(Dshm.PAAS_CCS_SERVICEID));
+            // // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD,
+            // // (String) stormConf.get(Dshm.PAAS_CCS_SERVICEPASSWORD));
+            //
+            // p.setProperty(Dshm.PAAS_AUTH_URL,
+            // "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
+            // p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
+            //
+            // calParamCacheClient = CacheFactoryUtil.getCacheClient(p,
+            // CacheBLMapper.CACHE_BL_CAL_PARAM);
+
+            // calParamCacheClient =
+            // CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
+            Properties p = new Properties();
+            p.setProperty(Dshm.PAAS_AUTH_URL,
+                    "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
+            p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
+            p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
+            p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
+            ComponentConfigLoader.loadPaaSConf(p);
         }
         if (cacheClientStlObjStat == null) {
-            cacheClientStlObjStat = CacheFactoryUtil.getCacheClient(NameSpace.STL_OBJ_STAT);
+            cacheClientStlObjStat = MCSClientFactory.getCacheClient(NameSpace.STL_OBJ_STAT);
         }
 
         /* 初始化hbase */
@@ -437,6 +465,8 @@ public class StatisticsBolt extends BaseBasicBolt {
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
+        ICacheClient calParamCacheClient = MCSClientFactory
+                .getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         Map<String, String> params = new TreeMap<String, String>();
         params.put(SmcConstants.DshmKeyName.TENANT_ID, tenantId);
         params.put(SmcConstants.DshmKeyName.BATCH_NO, batchNo);
