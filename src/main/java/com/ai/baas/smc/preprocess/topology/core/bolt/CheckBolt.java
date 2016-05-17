@@ -177,12 +177,13 @@ public class CheckBolt extends BaseBasicBolt {
             String applyTime = data.get(SmcConstants.APPLY_TIME);
             // 数据导入日志表中查询此批次数据的数据对象(redis)
             List<Map<String, String>> results = getDataFromDshm(tenantId, batchNo);
+            logger.info("@校验@共享内存获得的result为：" + results);
             if (results.size() == 0) {
                 throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                         tenantId + "." + batchNo + "租户id.批次号在共享内存中获得数据对象为空");
             }
             Map<String, String> map = results.get(0);
-            logger.info("共享内存获得的数据为：" + map);
+            logger.info("@校验@共享内存获得的数据为：" + map);
             String objectId = map.get("object_id");
             String billTimeSn = map.get("bill_time_sn");
             logger.info("共享内存获得的objectId=" + objectId);
