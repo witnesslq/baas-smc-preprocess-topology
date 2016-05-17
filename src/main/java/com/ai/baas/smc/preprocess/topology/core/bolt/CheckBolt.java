@@ -182,6 +182,7 @@ public class CheckBolt extends BaseBasicBolt {
                         tenantId + "." + batchNo + "租户id.批次号在共享内存中获得数据对象为空");
             }
             Map<String, String> map = results.get(0);
+            logger.info("共享内存获得的数据为：" + map);
             String objectId = map.get("object_id");
             String billTimeSn = map.get("bill_time_sn");
             logger.info("共享内存获得的objectId=" + objectId);
