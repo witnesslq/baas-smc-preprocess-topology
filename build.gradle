@@ -28,8 +28,8 @@ dependencies{
         exclude group: 'org.hibernate', module: 'hibernate-validator'
         exclude group: 'org.jboss.netty', module: 'netty'
         exclude group: 'com.alibaba', module: 'dubbox'
-        exclude group: 'com.ai', module: 'ipaas-dss'
-        exclude group: 'com.ai', module: 'ipaas-ses'
+        //        exclude group: 'com.ai', module: 'ipaas-dss'
+        //        exclude group: 'com.ai', module: 'ipaas-ses'
     }
     compile 'org.wltea.expression:IKExpression:2.1.2'
 
