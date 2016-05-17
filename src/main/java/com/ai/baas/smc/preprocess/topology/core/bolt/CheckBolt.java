@@ -2,7 +2,6 @@ package com.ai.baas.smc.preprocess.topology.core.bolt;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +29,6 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-import com.ai.baas.dshm.client.CacheFactoryUtil;
 import com.ai.baas.dshm.client.impl.CacheBLMapper;
 import com.ai.baas.dshm.client.impl.DshmClient;
 import com.ai.baas.dshm.client.interfaces.IDshmClient;
@@ -58,7 +56,6 @@ import com.ai.opt.sdk.components.mcs.MCSClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
 import com.ai.paas.ipaas.mcs.interfaces.ICacheClient;
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.fastjson.JSON;
 
 public class CheckBolt extends BaseBasicBolt {
@@ -160,7 +157,7 @@ public class CheckBolt extends BaseBasicBolt {
             logger.info("@校验@进入到校验bolt的流水数量key为" + inputData.substring(0, 20));
             Long numberLong = countCacheClient.incr(inputData.substring(0, 20));
             logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
-            if (StringUtils.isBlank(inputData)) {
+            if (StringUtil.isBlank(inputData)) {
                 logger.error("流水为空");
                 return;
             }
