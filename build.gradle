@@ -7,7 +7,8 @@ sourceCompatibility = 1.7
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 
-repositories { maven{ url "http://10.1.228.199:18081/nexus/content/groups/public/" } }
+repositories { maven{ url "http://10.1.228.199:18081/nexus/content/groups/public/"
+    } }
 
 configurations {
     provided
