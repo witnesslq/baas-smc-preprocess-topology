@@ -24,7 +24,7 @@ dependencies{
     compile ('com.ai.opt.sdk:opt-sdk:2.0-SNAPSHOT'){
         exclude group: 'org.springframework', module: 'spring-context'
         exclude group: 'org.postgresql', module: 'postgresql'
-//        exclude group: 'org.apache.commons', module: 'commons-email'
+        exclude group: 'org.apache.commons', module: 'commons-email'
         exclude group: 'org.hibernate', module: 'hibernate-validator'
         exclude group: 'org.jboss.netty', module: 'netty'
         exclude group: 'com.alibaba', module: 'dubbox'
