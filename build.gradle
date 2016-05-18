@@ -34,7 +34,10 @@ dependencies{
     compile 'org.wltea.expression:IKExpression:2.1.2'
 
     // 框架级依赖
-    compile 'org.apache.kafka:kafka_2.10:0.8.2.1'
+    compile ('org.apache.kafka:kafka_2.10:0.8.2.1'){
+        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
+        exclude group: 'log4j', module: 'log4j'
+    }
     compile 'org.apache.storm:storm-kafka:0.9.6'
     compile 'org.apache.hbase:hbase-client:1.1.2'
     compile 'com.ai.baas.storm:baas-storm:0.1.2-SNAPSHOT'
