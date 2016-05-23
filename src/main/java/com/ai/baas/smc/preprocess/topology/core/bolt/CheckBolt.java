@@ -337,8 +337,8 @@ public class CheckBolt extends BaseBasicBolt {
         String valueType = stlElement.getValueType();
         if (type.ENUM.equals(valueType)) {
             Boolean flag = false; // 系统参数表中获得类型
-            String result = sysCacheClient.get(stlElement.getTenantId() + "." + "STL_ORDER_DATA"
-                    + "." + stlElement.getElementCode());
+            String result = sysCacheClient.hget(NameSpace.SYS_PARAM_CACHE, stlElement.getTenantId()
+                    + "." + "STL_ORDER_DATA" + "." + stlElement.getElementCode());
             if (StringUtil.isBlank(result)) {
                 throw new BusinessException(ExceptCodeConstants.Special.PARAM_IS_NULL,
                         stlElement.getTenantId() + stlElement.getElementCode()
