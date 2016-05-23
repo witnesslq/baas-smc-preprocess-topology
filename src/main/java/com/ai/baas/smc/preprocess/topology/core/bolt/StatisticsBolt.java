@@ -188,10 +188,6 @@ public class StatisticsBolt extends BaseBasicBolt {
                             logger.info("取政策表的key为" + tenantIdpolicyId + "_" + objectId);
                             logger.info(tenantId + "_" + stlElement.getElementId().toString() + "_"
                                     + objectId + "@统计@获得统计元素属性表的对象list值为：" + elementResult);
-                            // System.out.println("取政策表的key为" + tenantIdpolicyId + "_" + objectId);
-                            // System.out.println(tenantId + "_"
-                            // + stlElement.getElementId().toString() + "_" + objectId
-                            // + "获得统计元素属性表的对象list值为：" + elementResult);
                             if (!StringUtil.isBlank(elementResult)) {
                                 List<StlElementAttr> elementAttrlist = JSON.parseArray(
                                         elementResult, StlElementAttr.class);
