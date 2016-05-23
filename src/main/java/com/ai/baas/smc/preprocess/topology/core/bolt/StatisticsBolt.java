@@ -18,7 +18,6 @@ import backtype.storm.topology.base.BaseBasicBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 
-import com.ai.baas.dshm.client.CacheFactoryUtil;
 import com.ai.baas.dshm.client.impl.CacheBLMapper;
 import com.ai.baas.dshm.client.impl.DshmClient;
 import com.ai.baas.dshm.client.interfaces.IDshmClient;
@@ -58,8 +57,6 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     private ICacheClient cacheClientElement;
 
-    private ICacheClient cacheClientCount;
-
     private ICacheClient cacheElementAttr;
 
     private ICacheClient cacheStatsTimes;
@@ -94,9 +91,6 @@ public class StatisticsBolt extends BaseBasicBolt {
         if (cacheClientElement == null) {
             cacheClientElement = MCSClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
         }
-        if (cacheClientCount == null) {
-            cacheClientCount = MCSClientFactory.getCacheClient(NameSpace.STATS_TIMES_COUNT);
-        }
         if (cacheElementAttr == null) {
             cacheElementAttr = MCSClientFactory.getCacheClient(NameSpace.STL_ELEMENT_ATTR_CACHE);
         }
@@ -110,25 +104,6 @@ public class StatisticsBolt extends BaseBasicBolt {
             dshmClient = new DshmClient();
         }
         if (calParamCacheClient == null) {
-            // Properties p = new Properties();
-            // // p.setProperty(Dshm.PAAS_AUTH_URL, (String) stormConf.get(Dshm.PAAS_AUTH_URL));
-            // // p.setProperty(Dshm.PAAS_AUTH_PID, (String) stormConf.get(Dshm.PAAS_AUTH_PID));
-            // // p.setProperty(Dshm.PAAS_CCS_SERVICEID, (String)
-            // // stormConf.get(Dshm.PAAS_CCS_SERVICEID));
-            // // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD,
-            // // (String) stormConf.get(Dshm.PAAS_CCS_SERVICEPASSWORD));
-            //
-            // p.setProperty(Dshm.PAAS_AUTH_URL,
-            // "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
-            // p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
-            //
-            // calParamCacheClient = CacheFactoryUtil.getCacheClient(p,
-            // CacheBLMapper.CACHE_BL_CAL_PARAM);
-
-            // calParamCacheClient =
-            // CacheFactoryUtil.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
             Properties p = new Properties();
             p.setProperty(Dshm.PAAS_AUTH_URL,
                     "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
@@ -155,7 +130,8 @@ public class StatisticsBolt extends BaseBasicBolt {
         /* 接收输入报文 */
         String inputData = input.getString(0);
         try {
-            String numberLong = countCacheClient.get(inputData.substring(0, 20));
+            String numberLong = countCacheClient.hget(NameSpace.CHECK_COUNT_CACHE,
+                    inputData.substring(0, 20));
             logger.info("@统计@进入到统计bolt的流水数量为" + numberLong);
             logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
             /* 解析报文 */
@@ -193,12 +169,12 @@ public class StatisticsBolt extends BaseBasicBolt {
                             // 租户ID+政策ID+账期+统计元素ID
                             String key = assemKey(tenantId, policyId.toString(), billTimeSn,
                                     stlElement.getElementId().toString());
-                            String result = cacheClientStlObjStat.get(key);
+                            String result = cacheClientStlObjStat.hget(NameSpace.STL_OBJ_STAT, key);
                             if (StringUtil.isBlank(result)) {
                                 String value = assemValue(tenantId, policyId.toString(),
                                         billTimeSn, objectId, stlElement.getElementId().toString(),
                                         "0", "0");
-                                cacheClientStlObjStat.set(key, value);
+                                cacheClientStlObjStat.hset(NameSpace.STL_OBJ_STAT, key, value);
                                 // System.out.println("租户ID+政策ID+账期+统计元素ID key值为：" + key);
                                 // System.out.println("租户ID+政策ID+账期+统计元素ID value值为：" + key);
                                 logger.info("@统计@租户ID+政策ID+账期+统计元素ID key值为：" + key);
@@ -249,7 +225,8 @@ public class StatisticsBolt extends BaseBasicBolt {
                                     }
                                 }
                                 // 结算对象统计数据表 统计次数+1
-                                String resultValue = cacheClientStlObjStat.get(key);
+                                String resultValue = cacheClientStlObjStat.hget(
+                                        NameSpace.STL_OBJ_STAT, key);
                                 logger.info("@统计@结算对象统计数据表 统计次数为：" + resultValue);
                                 System.out.println("@统计@结算对象统计数据表 统计次数为：" + resultValue);
                                 if (flag) { // 如果满足则根据汇总方式进行累加 ,结算对象统计数据表的统计次数加1
@@ -319,7 +296,7 @@ public class StatisticsBolt extends BaseBasicBolt {
     private String getElementCode(String tenantId, Long subElementId) throws BusinessException {
         StringBuilder sBuilder = new StringBuilder();
         sBuilder.append(tenantId).append(".").append(subElementId);
-        String result = elementCacheClient.get(sBuilder.toString());
+        String result = elementCacheClient.hget(NameSpace.ELEMENT_CACHE, sBuilder.toString());
         if (StringUtil.isBlank(result)) {
             throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                     tenantId + "." + subElementId + "此租户id和元素id对应的元素为空");
@@ -331,7 +308,7 @@ public class StatisticsBolt extends BaseBasicBolt {
     private void updateFinishRedis(String tenantId, String objectId, String billTimeSn,
             String batchNo, String totalRecord, ICacheClient cacheStatsTimes) {
         String finishKey = SmcConstants.FINISHKEY;
-        String cacheStatsTimesValues = cacheStatsTimes.get(finishKey);
+        String cacheStatsTimesValues = cacheStatsTimes.hget(NameSpace.STATS_TIMES, finishKey);
         if (StringUtil.isBlank(cacheStatsTimesValues)) {
             List<FinishListVo> finishListVos = new ArrayList<FinishListVo>();
             FinishListVo finishListVo = new FinishListVo();
@@ -342,7 +319,8 @@ public class StatisticsBolt extends BaseBasicBolt {
             finishListVo.setTenantId(tenantId);
             finishListVo.setStats_times(totalRecord);
             finishListVos.add(finishListVo);
-            cacheStatsTimes.set(finishKey, JSON.toJSONString(finishListVos));
+            cacheStatsTimes
+                    .hset(NameSpace.STATS_TIMES, finishKey, JSON.toJSONString(finishListVos));
             System.out.println("num == totalRecord加入到缓存的完成队列触发计算拓扑"
                     + JSON.toJSONString(finishListVos));
             logger.info("@统计@num == totalRecord加入到缓存的完成队列触发计算拓扑的值为："
@@ -357,7 +335,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             finishListVoNew.setTenantId(tenantId);
             finishListVoNew.setStats_times(totalRecord);
             list.add(finishListVoNew);
-            cacheStatsTimes.set(finishKey, JSON.toJSONString(list));
+            cacheStatsTimes.hset(NameSpace.STATS_TIMES, finishKey, JSON.toJSONString(list));
             System.out.println("num == totalRecord加入到缓存的完成队列触发计算拓扑" + JSON.toJSONString(list));
         }
     }
@@ -401,7 +379,7 @@ public class StatisticsBolt extends BaseBasicBolt {
         resultNew.append(timesNew.toString());
         System.out.println("@统计@累加后的key值为" + key + "value值为：" + resultNew.toString());
         logger.info("@统计@累加后的key值为" + key + "value值为：" + resultNew.toString());
-        cacheClientStlObjStat.set(key, resultNew.toString());
+        cacheClientStlObjStat.hset(NameSpace.STL_OBJ_STAT, key, resultNew.toString());
     }
 
     private Boolean checkRel(String matchType, String matchValue, String elementValue)

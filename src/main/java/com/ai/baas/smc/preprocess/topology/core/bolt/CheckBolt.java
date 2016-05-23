@@ -8,8 +8,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
@@ -70,10 +68,6 @@ public class CheckBolt extends BaseBasicBolt {
 
     private ICacheClient cacheClient;
 
-    private ICacheClient successRecordcacheClient;
-
-    private ICacheClient failedRecordcacheClient;
-
     private ICacheClient countCacheClient;
 
     private ICacheClient calParamCacheClient;
@@ -82,20 +76,12 @@ public class CheckBolt extends BaseBasicBolt {
 
     private ICacheClient sysCacheClient;
 
-    private static Configuration conf;
-
     @Override
     public void prepare(Map stormConf, TopologyContext context) {
         // TODO Auto-generated method stub
         super.prepare(stormConf, context);
         if (cacheClient == null) {
             cacheClient = MCSClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
-        }
-        if (successRecordcacheClient == null) {
-            successRecordcacheClient = MCSClientFactory.getCacheClient(NameSpace.SUCCESS_RECORD);
-        }
-        if (failedRecordcacheClient == null) {
-            failedRecordcacheClient = MCSClientFactory.getCacheClient(NameSpace.FAILED_RECORD);
         }
         if (countCacheClient == null) {
             countCacheClient = MCSClientFactory.getCacheClient(NameSpace.CHECK_COUNT_CACHE);
@@ -112,31 +98,11 @@ public class CheckBolt extends BaseBasicBolt {
             p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
             p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
             ComponentConfigLoader.loadPaaSConf(p);
-
-            // Properties p = new Properties();
-            // p.setProperty(Dshm.PAAS_AUTH_URL, (String) stormConf.get(Dshm.PAAS_AUTH_URL));
-            // p.setProperty(Dshm.PAAS_AUTH_PID, (String) stormConf.get(Dshm.PAAS_AUTH_PID));
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, (String)
-            // stormConf.get(Dshm.PAAS_CCS_SERVICEID));
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD,
-            // (String) stormConf.get(Dshm.PAAS_CCS_SERVICEPASSWORD));
-
-            // p.setProperty(Dshm.PAAS_AUTH_URL,
-            // "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
-            // p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
-            // calParamCacheClient = CacheFactoryUtil.getCacheClient(p,
-            // CacheBLMapper.CACHE_BL_CAL_PARAM);
-            // calParamCacheClient =
-            // MCSClientFactory.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
-
         }
         if (sysCacheClient == null) {
             sysCacheClient = MCSClientFactory.getCacheClient(NameSpace.SYS_PARAM_CACHE);
         }
 
-        conf = HBaseConfiguration.create();
         JdbcProxy.loadDefaultResource(stormConf);
         /* 初始化hbase */
         HBaseProxy.loadResource(stormConf);
