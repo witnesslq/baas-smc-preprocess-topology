@@ -3,7 +3,6 @@ package com.ai.baas.smc.preprocess.topology.core.bolt;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.TreeMap;
 
 import org.slf4j.Logger;
@@ -24,7 +23,6 @@ import com.ai.baas.dshm.client.interfaces.IDshmClient;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
-import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.Dshm;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.StatisticsType;
 import com.ai.baas.smc.preprocess.topology.core.util.IKin;
 import com.ai.baas.smc.preprocess.topology.core.vo.FinishListVo;
@@ -35,7 +33,6 @@ import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
 import com.ai.baas.storm.util.HBaseProxy;
-import com.ai.opt.sdk.components.base.ComponentConfigLoader;
 import com.ai.opt.sdk.components.mcs.MCSClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
@@ -104,13 +101,14 @@ public class StatisticsBolt extends BaseBasicBolt {
             dshmClient = new DshmClient();
         }
         if (calParamCacheClient == null) {
-            Properties p = new Properties();
-            p.setProperty(Dshm.PAAS_AUTH_URL,
-                    "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
-            p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
-            p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
-            p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
-            ComponentConfigLoader.loadPaaSConf(p);
+            calParamCacheClient = MCSClientFactory.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
+            // Properties p = new Properties();
+            // p.setProperty(Dshm.PAAS_AUTH_URL,
+            // "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
+            // p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
+            // ComponentConfigLoader.loadPaaSConf(p);
         }
         if (cacheClientStlObjStat == null) {
             cacheClientStlObjStat = MCSClientFactory.getCacheClient(NameSpace.STL_OBJ_STAT);
@@ -439,8 +437,6 @@ public class StatisticsBolt extends BaseBasicBolt {
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
-        ICacheClient calParamCacheClient = MCSClientFactory
-                .getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         Map<String, String> params = new TreeMap<String, String>();
         params.put(SmcConstants.DshmKeyName.TENANT_ID, tenantId);
         params.put(SmcConstants.DshmKeyName.BATCH_NO, batchNo);

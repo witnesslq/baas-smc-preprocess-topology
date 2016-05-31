@@ -90,14 +90,14 @@ public class CheckBolt extends BaseBasicBolt {
             dshmClient = new DshmClient();
         }
         if (calParamCacheClient == null) {
-
-            Properties p = new Properties();
-            p.setProperty(Dshm.PAAS_AUTH_URL,
-                    "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
-            p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
-            p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
-            p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
-            ComponentConfigLoader.loadPaaSConf(p);
+            calParamCacheClient = MCSClientFactory.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
+            // Properties p = new Properties();
+            // p.setProperty(Dshm.PAAS_AUTH_URL,
+            // "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
+            // p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
+            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
+            // ComponentConfigLoader.loadPaaSConf(p);
         }
         if (sysCacheClient == null) {
             sysCacheClient = MCSClientFactory.getCacheClient(NameSpace.SYS_PARAM_CACHE);
@@ -394,7 +394,6 @@ public class CheckBolt extends BaseBasicBolt {
     }
 
     private List<Map<String, String>> getDataFromDshm(String tenantId, String batchNo) {
-        calParamCacheClient = MCSClientFactory.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
         Map<String, String> params = new TreeMap<String, String>();
         params.put(SmcConstants.DshmKeyName.TENANT_ID, tenantId);
         params.put(SmcConstants.DshmKeyName.BATCH_NO, batchNo);
