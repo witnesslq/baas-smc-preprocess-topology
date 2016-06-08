@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import com.ai.baas.smc.preprocess.topology.core.bolt.CheckBolt;
 import com.ai.baas.smc.preprocess.topology.core.bolt.StatisticsBolt;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
-import com.ai.baas.smc.preprocess.topology.core.spolt.TestSpout;
 import com.ai.baas.storm.flow.BaseFlow;
 import com.ai.baas.storm.util.BaseConstants;
 
@@ -30,6 +29,7 @@ public class SMCPreprocessFlow extends BaseFlow {
     }
 
     public static void main(String[] args) {
+        logger.info("开始启动算费预处理拓扑...");
         SMCPreprocessFlow flow = new SMCPreprocessFlow();
         flow.run(args);
     }
