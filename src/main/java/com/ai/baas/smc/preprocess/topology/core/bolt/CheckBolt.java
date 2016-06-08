@@ -5,7 +5,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -34,7 +33,6 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlBillItemData.FamilyColumnName;
-import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.Dshm;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsNecessary;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsPrimaryKey;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
@@ -49,7 +47,6 @@ import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
 import com.ai.baas.storm.util.HBaseProxy;
-import com.ai.opt.sdk.components.base.ComponentConfigLoader;
 import com.ai.opt.sdk.components.mcs.MCSClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
@@ -76,9 +73,10 @@ public class CheckBolt extends BaseBasicBolt {
 
     private ICacheClient sysCacheClient;
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void prepare(Map stormConf, TopologyContext context) {
-        // TODO Auto-generated method stub
+    public void prepare(@SuppressWarnings("rawtypes")
+    Map stormConf, TopologyContext context) {
         super.prepare(stormConf, context);
         if (cacheClient == null) {
             cacheClient = MCSClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
@@ -114,7 +112,6 @@ public class CheckBolt extends BaseBasicBolt {
 
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
-        // TODO Auto-generated method stub
         /* 接收输入报文 */
 
         String inputData = input.getString(0);
