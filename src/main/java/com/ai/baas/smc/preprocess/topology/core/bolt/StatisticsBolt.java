@@ -25,6 +25,7 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableN
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.StatisticsType;
 import com.ai.baas.smc.preprocess.topology.core.util.IKin;
+import com.ai.baas.smc.preprocess.topology.core.util.LoadConfUtil;
 import com.ai.baas.smc.preprocess.topology.core.vo.FinishListVo;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElementAttr;
@@ -72,7 +73,7 @@ public class StatisticsBolt extends BaseBasicBolt {
     @Override
     public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context) {
         super.prepare(stormConf, context);
-
+        LoadConfUtil.loadPaasConf(stormConf);
         if (elementCacheClient == null) {
             elementCacheClient = MCSClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
         }

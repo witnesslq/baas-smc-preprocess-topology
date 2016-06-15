@@ -36,6 +36,7 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsPrimaryKey;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcHbaseConstants;
+import com.ai.baas.smc.preprocess.topology.core.util.LoadConfUtil;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlSysParam;
 import com.ai.baas.storm.failbill.FailBillHandler;
@@ -76,6 +77,7 @@ public class CheckBolt extends BaseBasicBolt {
     public void prepare(@SuppressWarnings("rawtypes")
     Map stormConf, TopologyContext context) {
         super.prepare(stormConf, context);
+        LoadConfUtil.loadPaasConf(stormConf);
         if (cacheClient == null) {
             cacheClient = MCSClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
         }
@@ -87,13 +89,6 @@ public class CheckBolt extends BaseBasicBolt {
         }
         if (calParamCacheClient == null) {
             calParamCacheClient = MCSClientFactory.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
-            // Properties p = new Properties();
-            // p.setProperty(Dshm.PAAS_AUTH_URL,
-            // "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
-            // p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
-            // ComponentConfigLoader.loadPaaSConf(p);
         }
         if (sysCacheClient == null) {
             sysCacheClient = MCSClientFactory.getCacheClient(NameSpace.SYS_PARAM_CACHE);
