@@ -103,13 +103,6 @@ public class StatisticsBolt extends BaseBasicBolt {
         }
         if (calParamCacheClient == null) {
             calParamCacheClient = MCSClientFactory.getCacheClient(CacheBLMapper.CACHE_BL_CAL_PARAM);
-            // Properties p = new Properties();
-            // p.setProperty(Dshm.PAAS_AUTH_URL,
-            // "http://10.1.245.4:19811/service-portal-uac-web/service/auth");
-            // p.setProperty(Dshm.PAAS_AUTH_PID, "87EA5A771D9647F1B5EBB600812E3067");
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEID, "CCS008");
-            // p.setProperty(Dshm.PAAS_CCS_SERVICEPASSWORD, "123456");
-            // ComponentConfigLoader.loadPaaSConf(p);
         }
         if (cacheClientStlObjStat == null) {
             cacheClientStlObjStat = MCSClientFactory.getCacheClient(NameSpace.STL_OBJ_STAT);
