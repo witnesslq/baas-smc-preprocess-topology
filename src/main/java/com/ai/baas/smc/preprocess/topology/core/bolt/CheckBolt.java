@@ -2,7 +2,6 @@ package com.ai.baas.smc.preprocess.topology.core.bolt;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -36,17 +35,16 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlBillIte
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsNecessary;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.IsPrimaryKey;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.type;
-import com.ai.baas.smc.preprocess.topology.core.constant.SmcExceptCodeConstant;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcHbaseConstants;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlSysParam;
-import com.ai.baas.storm.exception.BusinessException;
 import com.ai.baas.storm.failbill.FailBillHandler;
 import com.ai.baas.storm.jdbc.JdbcProxy;
 import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
 import com.ai.baas.storm.util.HBaseProxy;
+import com.ai.opt.base.exception.BusinessException;
 import com.ai.opt.sdk.components.mcs.MCSClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
@@ -116,14 +114,14 @@ public class CheckBolt extends BaseBasicBolt {
 
         String inputData = input.getString(0);
         try {
-            logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
-            logger.info("@校验@进入到校验bolt的流水数量key为" + inputData.substring(0, 20));
-            Long numberLong = countCacheClient.incr(inputData.substring(0, 20));
-            logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
             if (StringUtil.isBlank(inputData)) {
                 logger.error("流水为空");
                 return;
             }
+            logger.info("数据校验bolt输入消息报文：[" + inputData + "]...");
+            logger.info("@校验@进入到校验bolt的流水数量key为" + inputData.substring(0, 20));
+            Long numberLong = countCacheClient.incr(inputData.substring(0, 20));
+            logger.info("@校验@进入到校验bolt的流水数量为" + numberLong);
             /* 解析报文 */
             MessageParser messageParser = MessageParser.parseObject(inputData, mappingRules,
                     outputFields);
@@ -132,7 +130,6 @@ public class CheckBolt extends BaseBasicBolt {
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
 
-            // String batchNo = data.get(BaseConstants.BATCH_SERIAL_NUMBER);
             String orderId = data.get(SmcConstants.ORDER_ID);
             String applyTime = data.get(SmcConstants.APPLY_TIME);
             // 数据导入日志表中查询此批次数据的数据对象(redis)
@@ -169,8 +166,6 @@ public class CheckBolt extends BaseBasicBolt {
                                 "失败", "必填元素为空", inputData);
                         increaseRedise(false, tenantId, batchNo);
 
-                        FailBillHandler.addFailBillMsg(data, SmcConstants.BILL_DETAIL_CHECK_BOLT,
-                                SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
                         throw new BusinessException(
                                 ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                 stlElement.getElementCode() + "校验失败，此elementcode为必填");
@@ -178,11 +173,8 @@ public class CheckBolt extends BaseBasicBolt {
                         Boolean ValueTypeResult = checkValueType(element, stlElement);
                         if (!ValueTypeResult) {
                             assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
-                                    applyTime, "失败", "必填元素为空", inputData);
+                                    applyTime, "失败", "必填元素类型不匹配", inputData);
                             increaseRedise(false, tenantId, batchNo);
-                            FailBillHandler.addFailBillMsg(data,
-                                    SmcConstants.BILL_DETAIL_CHECK_BOLT,
-                                    SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
                             throw new BusinessException(
                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                     stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
@@ -193,9 +185,6 @@ public class CheckBolt extends BaseBasicBolt {
                                 assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
                                         applyTime, "失败", "是否主键与设定不符", inputData);
                                 increaseRedise(false, tenantId, batchNo);
-                                FailBillHandler.addFailBillMsg(data,
-                                        SmcConstants.BILL_DETAIL_CHECK_BOLT,
-                                        SmcExceptCodeConstant.BUSINESS_EXCEPTION, "预处理校验失败");
                                 throw new BusinessException(
                                         ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                         stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
@@ -208,6 +197,10 @@ public class CheckBolt extends BaseBasicBolt {
                     inputData);
             increaseRedise(true, tenantId, batchNo);
             collector.emit(new Values(inputData));
+        } catch (BusinessException e) {
+            logger.error("@@@@@@@@@@@@@@预处理校验@校验bolt出现异常", e);
+            FailBillHandler.addFailBillMsg(inputData, SmcConstants.CHECK_BOLT, e.getErrorCode(),
+                    e.getErrorMessage());
         } catch (Exception e) {
             logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常为：", e);
             logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常流水为：", inputData);
@@ -263,7 +256,7 @@ public class CheckBolt extends BaseBasicBolt {
         // stlOrderDatakey.append(verifyState);
         // stlOrderDatakey.append("_");
         // stlOrderDatakey.append(verifydesc);
-        String tableName = SmcHbaseConstants.TableName.STL_ORDER_DATA + yyyyMm;
+        String tableName = SmcHbaseConstants.TableName.STL_ORDER_DATA_ + yyyyMm;
         Table tableStlOrderData = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
         Admin admin = HBaseProxy.getConnection().getAdmin();
         if (!admin.isTableAvailable(TableName.valueOf(tableName))) {
@@ -304,7 +297,6 @@ public class CheckBolt extends BaseBasicBolt {
     private Boolean checkIsPK(StlElement stlElement, String tenantId, String batchNo,
             String objectId, String orderId, String applyTime) throws IOException {
         boolean boolresult = true;
-        int a = 0;
         if (stlElement.getIsPrimaryKey().equals(IsPrimaryKey.YES)) {
             StringBuilder stlOrderDatakey = new StringBuilder();
             stlOrderDatakey.append(tenantId);
@@ -369,8 +361,7 @@ public class CheckBolt extends BaseBasicBolt {
         } else if (type.DATETIME.equals(valueType)) {
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat("YYYYMMDDhhmmss");
-                Date date = new Date();
-                date = sdf.parse(element); // Mon Jan 14 00:00:00 CST 2013
+                sdf.parse(element); // Mon Jan 14 00:00:00 CST 2013
 
             } catch (Exception e) {
                 throw new BusinessException(e.getMessage(), element + "日期yyyyMMddhhmmss型转换失败");

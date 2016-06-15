@@ -39,7 +39,7 @@ public final class SmcHbaseConstants {
         /**
          * 流水数据表
          */
-        public static final String STL_ORDER_DATA = "stl_order_data_";
+        public static final String STL_ORDER_DATA_ = "stl_order_data_";
 
     }
 

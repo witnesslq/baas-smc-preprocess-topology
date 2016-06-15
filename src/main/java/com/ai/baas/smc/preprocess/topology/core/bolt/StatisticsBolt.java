@@ -68,9 +68,9 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     private ICacheClient cacheClientStlObjStat;
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void prepare(Map stormConf, TopologyContext context) {
-        // TODO Auto-generated method stub
+    public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context) {
         super.prepare(stormConf, context);
 
         if (elementCacheClient == null) {
@@ -124,7 +124,6 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
-        // TODO Auto-generated method stub
         /* 接收输入报文 */
         String inputData = input.getString(0);
         try {
@@ -281,7 +280,6 @@ public class StatisticsBolt extends BaseBasicBolt {
                         tenantId + "." + batchNo + "此租户id的这个批次统计错误统计数已经超过此批次总数");
             }
         } catch (Exception e) {
-            e.printStackTrace();
             logger.error("@@@@@@@@@@@@@@统计@统计bolt的异常为：", e);
             logger.error("@@@@@@@@@@@@@@统计@统计bolt的异常流水为：", inputData);
         }
