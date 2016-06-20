@@ -30,6 +30,7 @@ import com.ai.baas.smc.preprocess.topology.core.vo.FinishListVo;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElementAttr;
 import com.ai.baas.storm.exception.BusinessException;
+import com.ai.baas.storm.failbill.FailBillHandler;
 import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
@@ -74,6 +75,7 @@ public class StatisticsBolt extends BaseBasicBolt {
     public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context) {
         super.prepare(stormConf, context);
         LoadConfUtil.loadPaasConf(stormConf);
+        FailBillHandler.startup();
         if (elementCacheClient == null) {
             elementCacheClient = MCSClientFactory.getCacheClient(NameSpace.ELEMENT_CACHE);
         }

@@ -78,6 +78,7 @@ public class CheckBolt extends BaseBasicBolt {
     Map stormConf, TopologyContext context) {
         super.prepare(stormConf, context);
         LoadConfUtil.loadPaasConf(stormConf);
+        FailBillHandler.startup();
         if (cacheClient == null) {
             cacheClient = MCSClientFactory.getCacheClient(NameSpace.OBJECT_ELEMENT_CACHE);
         }
@@ -106,7 +107,7 @@ public class CheckBolt extends BaseBasicBolt {
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
         /* 接收输入报文 */
-
+        Map<String, String> data = null;
         String inputData = input.getString(0);
         try {
             if (StringUtil.isBlank(inputData)) {
@@ -120,8 +121,7 @@ public class CheckBolt extends BaseBasicBolt {
             /* 解析报文 */
             MessageParser messageParser = MessageParser.parseObject(inputData, mappingRules,
                     outputFields);
-
-            Map<String, String> data = messageParser.getData();
+            data = messageParser.getData();
             logger.info("流水数据" + data);
 
             String tenantId = data.get(BaseConstants.TENANT_ID);
@@ -196,12 +196,12 @@ public class CheckBolt extends BaseBasicBolt {
             collector.emit(new Values(inputData));
         } catch (BusinessException e) {
             logger.error("@@@@@@@@@@@@@@预处理校验@校验bolt出现异常", e);
-            FailBillHandler.addFailBillMsg(inputData, SmcConstants.CHECK_BOLT, e.getErrorCode(),
+            FailBillHandler.addFailBillMsg(data, SmcConstants.CHECK_BOLT, e.getErrorCode(),
                     e.getErrorMessage());
         } catch (Exception e) {
             logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常为：", e);
-            logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常流水为：", inputData);
-            FailBillHandler.addFailBillMsg(inputData, "预处理拓扑", "校验bolt", e.getMessage());
+            logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常流水为："+inputData);
+            FailBillHandler.addFailBillMsg(data, "预处理拓扑", "校验bolt", e.getMessage());
         }
     }
 
