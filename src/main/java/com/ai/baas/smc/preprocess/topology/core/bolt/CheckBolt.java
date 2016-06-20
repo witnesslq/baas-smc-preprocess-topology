@@ -122,6 +122,8 @@ public class CheckBolt extends BaseBasicBolt {
                     outputFields);
 
             Map<String, String> data = messageParser.getData();
+            logger.info("流水数据" + data);
+
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
 
@@ -175,7 +177,7 @@ public class CheckBolt extends BaseBasicBolt {
                                     stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
                         } else {
                             Boolean IsPKResult = checkIsPK(stlElement, tenantId, batchNo, objectId,
-                                    orderId, applyTime);
+                                    orderId, billTimeSn);
                             if (!IsPKResult) {
                                 assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
                                         applyTime, "失败", "是否主键与设定不符", inputData);
@@ -290,7 +292,7 @@ public class CheckBolt extends BaseBasicBolt {
     }
 
     private Boolean checkIsPK(StlElement stlElement, String tenantId, String batchNo,
-            String objectId, String orderId, String applyTime) throws IOException {
+            String objectId, String orderId, String billTimeSn) throws IOException {
         boolean boolresult = true;
         if (stlElement.getIsPrimaryKey().equals(IsPrimaryKey.YES)) {
             StringBuilder stlOrderDatakey = new StringBuilder();
@@ -301,7 +303,7 @@ public class CheckBolt extends BaseBasicBolt {
             stlOrderDatakey.append(objectId);
             stlOrderDatakey.append("_");
             stlOrderDatakey.append(orderId);
-            String tableName = "stl_order_data_" + applyTime.substring(0, 6);
+            String tableName = "stl_order_data_" + billTimeSn;
             System.out.println("表名为：" + tableName);
             System.out.println(HBaseProxy.getConnection());
             Table tables = HBaseProxy.getConnection().getTable(TableName.valueOf(tableName));
