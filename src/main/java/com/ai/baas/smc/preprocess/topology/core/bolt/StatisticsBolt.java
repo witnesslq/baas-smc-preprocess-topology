@@ -24,17 +24,19 @@ import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.DshmTableName;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.NameSpace;
 import com.ai.baas.smc.preprocess.topology.core.constant.SmcConstants.StlElement.StatisticsType;
+import com.ai.baas.smc.preprocess.topology.core.constant.SmcExceptCodeConstant;
 import com.ai.baas.smc.preprocess.topology.core.util.IKin;
 import com.ai.baas.smc.preprocess.topology.core.util.LoadConfUtil;
 import com.ai.baas.smc.preprocess.topology.core.vo.FinishListVo;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElement;
 import com.ai.baas.smc.preprocess.topology.core.vo.StlElementAttr;
-import com.ai.baas.storm.exception.BusinessException;
+import com.ai.baas.storm.duplicate.DuplicateCheckingFromHBase;
 import com.ai.baas.storm.failbill.FailBillHandler;
 import com.ai.baas.storm.message.MappingRule;
 import com.ai.baas.storm.message.MessageParser;
 import com.ai.baas.storm.util.BaseConstants;
 import com.ai.baas.storm.util.HBaseProxy;
+import com.ai.opt.base.exception.BusinessException;
 import com.ai.opt.sdk.components.mcs.MCSClientFactory;
 import com.ai.opt.sdk.constants.ExceptCodeConstants;
 import com.ai.opt.sdk.util.StringUtil;
@@ -72,7 +74,8 @@ public class StatisticsBolt extends BaseBasicBolt {
 
     @SuppressWarnings("unchecked")
     @Override
-    public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context) {
+    public void prepare(@SuppressWarnings("rawtypes")
+    Map stormConf, TopologyContext context) {
         super.prepare(stormConf, context);
         LoadConfUtil.loadPaasConf(stormConf);
         FailBillHandler.startup();
@@ -122,6 +125,7 @@ public class StatisticsBolt extends BaseBasicBolt {
     public void execute(Tuple input, BasicOutputCollector collector) {
         /* 接收输入报文 */
         String inputData = input.getString(0);
+        Map<String, String> data = null;
         try {
             String numberLong = countCacheClient.hget(NameSpace.CHECK_COUNT_CACHE,
                     inputData.substring(0, 20));
@@ -130,7 +134,7 @@ public class StatisticsBolt extends BaseBasicBolt {
             /* 解析报文 */
             MessageParser messageParser = MessageParser.parseObject(inputData, mappingRules,
                     outputFields);
-            Map<String, String> data = messageParser.getData();
+            data = messageParser.getData();
             String tenantId = data.get(BaseConstants.TENANT_ID);
             String batchNo = data.get(SmcConstants.BATCH_NO);
             String finishbatchNo = data.get(BaseConstants.BATCH_SERIAL_NUMBER);
@@ -216,8 +220,15 @@ public class StatisticsBolt extends BaseBasicBolt {
                                 // 结算对象统计数据表 统计次数+1
                                 String resultValue = cacheClientStlObjStat.hget(
                                         NameSpace.STL_OBJ_STAT, key);
+
                                 logger.info("@统计@结算对象统计数据表 统计次数为：" + resultValue);
                                 System.out.println("@统计@结算对象统计数据表 统计次数为：" + resultValue);
+                                /* 查重 */
+                                DuplicateCheckingFromHBase checking = new DuplicateCheckingFromHBase();
+                                if (!checking.checkData(data)) {
+                                    throw new BusinessException(
+                                            SmcExceptCodeConstant.FAIL_CODE_DUP, "重复流水");
+                                }
                                 if (flag) { // 如果满足则根据汇总方式进行累加 ,结算对象统计数据表的统计次数加1
                                     System.out.println("@统计@######累加方式为："
                                             + stlElement.getStatisticsType());
@@ -259,6 +270,11 @@ public class StatisticsBolt extends BaseBasicBolt {
             // key:busidata_租户ID _批次号_stats_times
             // value:业务数据_租户ID _批次号__完成记录数
             String countKey = assemCountKey("busidata", tenantId, batchNo, "stats_times");
+            /* 查重 */
+            DuplicateCheckingFromHBase checking = new DuplicateCheckingFromHBase();
+            if (!checking.checkData(data)) {
+                throw new BusinessException(SmcExceptCodeConstant.FAIL_CODE_DUP, "重复流水");
+            }
             long num = countCacheClient.incr(countKey);
             System.out.println("busidata_租户ID _批次号_stats_timesKey值为：" + countKey);
             System.out.println("记录总数值为：" + totalRecord);
@@ -275,6 +291,10 @@ public class StatisticsBolt extends BaseBasicBolt {
                 throw new BusinessException(ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                         tenantId + "." + batchNo + "此租户id的这个批次统计错误统计数已经超过此批次总数");
             }
+        } catch (BusinessException e) {
+            logger.error("出现异常", e);
+            FailBillHandler.addFailBillMsg(data, SmcConstants.CHECK_BOLT, e.getErrorCode(),
+                    e.getErrorMessage());
         } catch (Exception e) {
             logger.error("@@@@@@@@@@@@@@统计@统计bolt的异常为：", e);
             logger.error("@@@@@@@@@@@@@@统计@统计bolt的异常流水为：", inputData);

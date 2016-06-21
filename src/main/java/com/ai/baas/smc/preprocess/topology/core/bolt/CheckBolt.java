@@ -175,18 +175,19 @@ public class CheckBolt extends BaseBasicBolt {
                             throw new BusinessException(
                                     ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
                                     stlElement.getElementCode() + "校验失败，此elementcode属性值类型错误");
-                        } else {
-                            Boolean IsPKResult = checkIsPK(stlElement, tenantId, batchNo, objectId,
-                                    orderId, billTimeSn);
-                            if (!IsPKResult) {
-                                assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
-                                        applyTime, "失败", "是否主键与设定不符", inputData);
-                                increaseRedise(false, tenantId, batchNo);
-                                throw new BusinessException(
-                                        ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
-                                        stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
-                            }
                         }
+                        // else {
+                        // Boolean IsPKResult = checkIsPK(stlElement, tenantId, batchNo, objectId,
+                        // orderId, billTimeSn);
+                        // if (!IsPKResult) {
+                        // assemResult(tenantId, batchNo, billTimeSn, objectId, orderId,
+                        // applyTime, "失败", "是否主键与设定不符", inputData);
+                        // increaseRedise(false, tenantId, batchNo);
+                        // throw new BusinessException(
+                        // ExceptCodeConstants.Special.NO_DATA_OR_CACAE_ERROR,
+                        // stlElement.getElementCode() + "校验失败，此elementcode是否主键与设定不符");
+                        // }
+                        // }
                     }
                 }
             }
@@ -200,7 +201,7 @@ public class CheckBolt extends BaseBasicBolt {
                     e.getErrorMessage());
         } catch (Exception e) {
             logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常为：", e);
-            logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常流水为："+inputData);
+            logger.error("@@@@@@@@@@@@@@校验@校验bolt的异常流水为：" + inputData);
             FailBillHandler.addFailBillMsg(data, "预处理拓扑", "校验bolt", e.getMessage());
         }
     }
